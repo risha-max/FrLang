@@ -22,6 +22,8 @@ def unknown_word(word: str, line: int, column: int) -> LexerError:
         hint = "Écris plutôt nombre. Exemple : soit nombre age = 12;"
     elif word in {"vrai_faux", "booleen", "bool"}:
         hint = "Écris plutôt logique. Exemple : soit logique actif = vrai;"
+    elif word == "tant":
+        hint = "Écris plutôt tantque. Exemple : tantque i < 5 { somme = somme + i; }"
     elif word in _OBJECT_TYPE_RENAMES:
         new_name = _OBJECT_TYPE_RENAMES[word]
         hint = f"Les objets commencent par une majuscule. Écris plutôt {new_name}. Exemple : nouveau {new_name}();"

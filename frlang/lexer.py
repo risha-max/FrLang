@@ -53,7 +53,7 @@ class TokenKind(Enum):
     CONSTRUCTEUR = auto()
     SI = auto()
     SINON = auto()
-    TANT = auto()
+    TANTQUE = auto()
     EQEQ = auto()
     NEQ = auto()
     LT = auto()
@@ -80,7 +80,7 @@ _KEYWORDS.update(
         "constructeur": TokenKind.CONSTRUCTEUR,
         "si": TokenKind.SI,
         "sinon": TokenKind.SINON,
-        "tant": TokenKind.TANT,
+        "tantque": TokenKind.TANTQUE,
         "pointeur": TokenKind.TYPE,
         "nombre": TokenKind.TYPE,
         "Mots": TokenKind.TYPE,
@@ -221,7 +221,7 @@ class Lexer:
             self._advance()
 
         word = self._source[start : self._index]
-        if word in {"entier", "reel", "vrai_faux", "booleen", "bool"}:
+        if word in {"entier", "reel", "vrai_faux", "booleen", "bool", "tant"}:
             raise unknown_word(word, start_line, start_column)
 
         kind = _KEYWORDS.get(word, TokenKind.IDENTIFIER)

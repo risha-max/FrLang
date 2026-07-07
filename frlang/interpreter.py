@@ -182,7 +182,7 @@ class Interpreter:
             TokenKind.AFFICHER,
             TokenKind.DEFINIR,
             TokenKind.SI,
-            TokenKind.TANT,
+            TokenKind.TANTQUE,
             TokenKind.SEMICOLON,
             TokenKind.EQUAL,
             TokenKind.DOT,
@@ -232,7 +232,7 @@ class Interpreter:
                     self._if_statement()
                 except ReturnSignal as signal:
                     raise return_outside_function(self._previous().line, self._previous().column) from signal
-            elif self._check(TokenKind.TANT):
+            elif self._check(TokenKind.TANTQUE):
                 self._advance()
                 try:
                     self._while_statement()
@@ -905,7 +905,7 @@ class Interpreter:
             self._if_statement(function_context)
             return
 
-        if self._check(TokenKind.TANT):
+        if self._check(TokenKind.TANTQUE):
             self._advance()
             self._while_statement(function_context)
             return

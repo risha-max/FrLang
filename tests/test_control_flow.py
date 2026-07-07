@@ -11,14 +11,22 @@ def test_si_sinon() -> None:
     assert result == 2
 
 
-def test_tant_while_loop() -> None:
+def test_tantque_while_loop() -> None:
     result = Interpreter(
         "soit nombre i = 0; "
         "soit nombre somme = 0; "
-        "tant i < 5 { somme = somme + i; i = i + 1; } "
+        "tantque i < 5 { somme = somme + i; i = i + 1; } "
         "somme;"
     ).run()
     assert result == 10
+
+
+def test_deprecated_tant_keyword() -> None:
+    from frlang.errors import LexerError
+    from frlang.lexer import Lexer
+
+    with pytest.raises(LexerError, match="Écris plutôt tantque"):
+        Lexer("tant").tokenize()
 
 
 def test_comparisons() -> None:
