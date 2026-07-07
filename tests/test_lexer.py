@@ -1,8 +1,8 @@
 import pytest
 
-from sac.errors import LexerError, ParseError
-from sac.interpreter import Interpreter
-from sac.lexer import Lexer, TokenKind
+from frlang.errors import LexerError, ParseError
+from frlang.interpreter import Interpreter
+from frlang.lexer import Lexer, TokenKind
 
 
 def kinds(source: str) -> list[TokenKind]:
@@ -70,8 +70,8 @@ def test_nombre_accepts_decimal() -> None:
 
 
 def test_mots_type() -> None:
-    value, _ = run('soit mots ville = "Montréal"; ville;')
-    assert value == "Montréal"
+    value, _ = run('soit Mots ville = "Montréal"; ville;')
+    assert value.text == "Montréal"
 
 
 def test_logique_type() -> None:
@@ -85,8 +85,8 @@ def test_afficher_logique() -> None:
 
 
 def test_mots_rejects_number() -> None:
-    with pytest.raises(ParseError, match="il faut un mots"):
-        run("soit mots x = 5;")
+    with pytest.raises(ParseError, match="il faut un Mots"):
+        run("soit Mots x = 5;")
 
 
 def test_logique_rejects_number() -> None:
@@ -121,7 +121,7 @@ def test_duplicate_same_type() -> None:
 
 def test_duplicate_different_type() -> None:
     with pytest.raises(ParseError, match="existe déjà"):
-        run('soit nombre x = 5; soit mots x = "hi";')
+        run('soit nombre x = 5; soit Mots x = "hi";')
 
 
 def test_type_used_as_variable_name() -> None:

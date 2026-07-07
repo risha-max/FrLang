@@ -1,0 +1,10 @@
+definir fonction verifier(Mots mot) {
+    soit Mots inverse = mot.inverser();
+    si mot.equals(inverse) {
+        retourne nouveau Mots("GAGNER");
+    }
+    retourne nouveau Mots("");
+} retourne Mots
+
+afficher verifier(nouveau Mots("radar"));
+afficher verifier(nouveau Mots("bonjour"));

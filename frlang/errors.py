@@ -1,4 +1,4 @@
-class SacError(Exception):
+class FrLangError(Exception):
     """Erreur de base du langage."""
 
     def __init__(
@@ -20,9 +20,16 @@ class SacError(Exception):
         super().__init__(text)
 
 
-class LexerError(SacError):
+class LexerError(FrLangError):
     """Erreur de lecture du code."""
 
 
-class ParseError(SacError):
+class ParseError(FrLangError):
     """Erreur dans la façon dont le calcul est écrit."""
+
+
+class ReturnSignal(Exception):
+    """Fin anticipée d'une fonction (retourne)."""
+
+    def __init__(self, value: object | None) -> None:
+        self.value = value

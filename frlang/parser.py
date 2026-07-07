@@ -1,4 +1,4 @@
-from sac.interpreter import Interpreter
+from frlang.interpreter import Interpreter
 
 Parser = Interpreter
 

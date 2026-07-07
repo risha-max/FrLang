@@ -2,7 +2,18 @@ from dataclasses import dataclass
 from enum import Enum, auto
 from typing import Iterator
 
-from sac.messages import incomplete_number, invalid_number, unterminated_text, unknown_symbol, unknown_word
+from frlang.messages import (
+    empty_based_literal,
+    incomplete_number,
+    invalid_binary_literal,
+    invalid_hex_literal,
+    invalid_number,
+    unterminated_number_literal,
+    unterminated_text,
+    unknown_number_prefix,
+    unknown_symbol,
+    unknown_word,
+)
 
 _KEYWORDS: dict[str, "TokenKind"] = {}
 
@@ -12,6 +23,7 @@ class TokenKind(Enum):
     TEXT = auto()
     VRAI = auto()
     FAUX = auto()
+    RIEN = auto()
     IDENTIFIER = auto()
     SOIT = auto()
     AFFICHER = auto()
@@ -32,7 +44,22 @@ class TokenKind(Enum):
     LBRACE = auto()
     RBRACE = auto()
     DEFINIR = auto()
+    FONCTION = auto()
+    CLASSE = auto()
+    HERITE = auto()
+    DE = auto()
     RETOURNE = auto()
+    NOUVEAU = auto()
+    CONSTRUCTEUR = auto()
+    SI = auto()
+    SINON = auto()
+    TANT = auto()
+    EQEQ = auto()
+    NEQ = auto()
+    LT = auto()
+    GT = auto()
+    LTE = auto()
+    GTE = auto()
     LPAREN = auto()
     RPAREN = auto()
     EOF = auto()
@@ -44,18 +71,28 @@ _KEYWORDS.update(
         "soit": TokenKind.SOIT,
         "afficher": TokenKind.AFFICHER,
         "definir": TokenKind.DEFINIR,
+        "fonction": TokenKind.FONCTION,
+        "classe": TokenKind.CLASSE,
+        "herite": TokenKind.HERITE,
+        "de": TokenKind.DE,
         "retourne": TokenKind.RETOURNE,
+        "nouveau": TokenKind.NOUVEAU,
+        "constructeur": TokenKind.CONSTRUCTEUR,
+        "si": TokenKind.SI,
+        "sinon": TokenKind.SINON,
+        "tant": TokenKind.TANT,
         "pointeur": TokenKind.TYPE,
         "nombre": TokenKind.TYPE,
-        "mots": TokenKind.TYPE,
+        "Mots": TokenKind.TYPE,
         "logique": TokenKind.TYPE,
-        "rangée": TokenKind.TYPE,
-        "sac": TokenKind.TYPE,
-        "carnet": TokenKind.TYPE,
-        "tas": TokenKind.TYPE,
-        "file": TokenKind.TYPE,
+        "Rangee": TokenKind.TYPE,
+        "Sac": TokenKind.TYPE,
+        "Carnet": TokenKind.TYPE,
+        "Tas": TokenKind.TYPE,
+        "File": TokenKind.TYPE,
         "vrai": TokenKind.VRAI,
         "faux": TokenKind.FAUX,
+        "rien": TokenKind.RIEN,
     }
 )
 
@@ -97,6 +134,15 @@ class Lexer:
                 continue
 
             if char.isalpha() or char == "_":
+                if char.isalpha() and self._peek_next() == "'":
+                    if char == "b":
+                        yield self._read_based_number("binary")
+                        continue
+                    if char == "h":
+                        yield self._read_based_number("hex")
+                        continue
+                    yield self._read_unknown_number_prefix()
+                    continue
                 yield self._read_word()
                 continue
 
@@ -116,7 +162,29 @@ class Lexer:
                 case "^":
                     yield Token(TokenKind.CARET, "^", start_line, start_column)
                 case "=":
-                    yield Token(TokenKind.EQUAL, "=", start_line, start_column)
+                    if self._peek_current() == "=":
+                        self._advance()
+                        yield Token(TokenKind.EQEQ, "==", start_line, start_column)
+                    else:
+                        yield Token(TokenKind.EQUAL, "=", start_line, start_column)
+                case "!":
+                    if self._peek_current() == "=":
+                        self._advance()
+                        yield Token(TokenKind.NEQ, "!=", start_line, start_column)
+                    else:
+                        raise unknown_symbol(char, start_line, start_column)
+                case "<":
+                    if self._peek_current() == "=":
+                        self._advance()
+                        yield Token(TokenKind.LTE, "<=", start_line, start_column)
+                    else:
+                        yield Token(TokenKind.LT, "<", start_line, start_column)
+                case ">":
+                    if self._peek_current() == "=":
+                        self._advance()
+                        yield Token(TokenKind.GTE, ">=", start_line, start_column)
+                    else:
+                        yield Token(TokenKind.GT, ">", start_line, start_column)
                 case ";":
                     yield Token(TokenKind.SEMICOLON, ";", start_line, start_column)
                 case ".":
@@ -209,6 +277,67 @@ class Lexer:
             raise invalid_number(raw, start_line, start_column) from exc
 
         return Token(TokenKind.NUMBER, value, start_line, start_column)
+
+    def _read_based_number(self, base: str) -> Token:
+        start_line = self._line
+        start_column = self._column
+        self._advance()
+
+        if self._is_at_end() or self._source[self._index] != "'":
+            raise unknown_number_prefix(self._source[start_column - 1], start_line, start_column)
+
+        self._advance()
+        content_start = self._index
+
+        while self._index < len(self._source) and self._source[self._index] != "'":
+            if self._source[self._index] == "\n":
+                raise unterminated_number_literal(base, start_line, start_column)
+            self._advance()
+
+        if self._index >= len(self._source):
+            raise unterminated_number_literal(base, start_line, start_column)
+
+        content = self._source[content_start : self._index]
+        self._advance()
+
+        if not content:
+            raise empty_based_literal(base, start_line, start_column)
+
+        if base == "binary":
+            if any(char not in "01" for char in content):
+                raise invalid_binary_literal(content, start_line, start_column)
+            value = int(content, 2)
+        else:
+            if any(char not in "0123456789abcdefABCDEF" for char in content):
+                raise invalid_hex_literal(content, start_line, start_column)
+            value = int(content, 16)
+
+        return Token(TokenKind.NUMBER, value, start_line, start_column)
+
+    def _read_unknown_number_prefix(self) -> Token:
+        start_line = self._line
+        start_column = self._column
+        prefix = self._advance()
+        self._advance()
+
+        while self._index < len(self._source) and self._source[self._index] != "'":
+            if self._source[self._index] == "\n":
+                raise unterminated_number_literal(prefix, start_line, start_column)
+            self._advance()
+
+        if self._index >= len(self._source):
+            raise unterminated_number_literal(prefix, start_line, start_column)
+
+        self._advance()
+        raise unknown_number_prefix(prefix, start_line, start_column)
+
+    def _is_at_end(self) -> bool:
+        return self._index >= len(self._source)
+
+    def _peek_current(self) -> str:
+        if self._is_at_end():
+            return ""
+        return self._source[self._index]
 
     def _peek_next(self) -> str:
         if self._index + 1 >= len(self._source):

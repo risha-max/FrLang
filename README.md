@@ -10,7 +10,7 @@ FrLang utilise des mots du quotidien (`soit`, `afficher`, `definir`, `sac`, `ran
 soit nombre x = 5;
 afficher x;
 
-definir double(n: nombre) {
+definir fonction double(nombre n) {
     retourne n * 2;
 } retourne nombre
 

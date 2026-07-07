@@ -4,18 +4,29 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Callable
 
-from sac.messages import (
+from frlang.messages import (
     carnet_key_missing,
     empty_collection,
     index_out_of_range,
     sac_no_order_access,
     unknown_object_method,
+    wrong_constructor_argument_count,
     wrong_method_argument_count,
 )
-from sac.types import Value, format_value
+from frlang.types import (
+    NOTHING,
+    ClassType,
+    TypeSpec,
+    Value,
+    VarType,
+    format_value,
+    is_object_var_type,
+    is_pointer_type,
+    is_primitive_var_type,
+)
 
 
-class ObjetSac(ABC):
+class FrLangObject(ABC):
     @property
     @abstractmethod
     def type_name(self) -> str:
@@ -48,16 +59,16 @@ def _expect_count(
 
 
 @dataclass
-class Rangee(ObjetSac):
+class Rangee(FrLangObject):
     items: list[Value] = field(default_factory=list)
 
     @property
     def type_name(self) -> str:
-        return "rangée"
+        return "Rangee"
 
     def describe(self) -> str:
         inner = ", ".join(format_value(item) for item in self.items)
-        return f"rangée [{inner}]"
+        return f"Rangee [{inner}]"
 
     def call_method(
         self,
@@ -103,16 +114,16 @@ class Rangee(ObjetSac):
 
 
 @dataclass
-class Sac(ObjetSac):
+class Sac(FrLangObject):
     items: list[Value] = field(default_factory=list)
 
     @property
     def type_name(self) -> str:
-        return "sac"
+        return "Sac"
 
     def describe(self) -> str:
         inner = ", ".join(format_value(item) for item in self.items)
-        return f"sac [{inner}]"
+        return f"Sac [{inner}]"
 
     def call_method(
         self,
@@ -149,17 +160,17 @@ class Sac(ObjetSac):
 
 
 @dataclass
-class Carnet(ObjetSac):
+class Carnet(FrLangObject):
     entries: dict[str, Value] = field(default_factory=dict)
     order: list[str] = field(default_factory=list)
 
     @property
     def type_name(self) -> str:
-        return "carnet"
+        return "Carnet"
 
     def describe(self) -> str:
         pairs = ", ".join(f"{key}: {format_value(value)}" for key, value in self.entries.items())
-        return f"carnet [{pairs}]"
+        return f"Carnet [{pairs}]"
 
     def call_method(
         self,
@@ -214,16 +225,16 @@ class Carnet(ObjetSac):
 
 
 @dataclass
-class Tas(ObjetSac):
+class Tas(FrLangObject):
     items: list[Value] = field(default_factory=list)
 
     @property
     def type_name(self) -> str:
-        return "tas"
+        return "Tas"
 
     def describe(self) -> str:
         inner = ", ".join(format_value(item) for item in self.items)
-        return f"tas [{inner}]"
+        return f"Tas [{inner}]"
 
     def call_method(
         self,
@@ -253,16 +264,16 @@ class Tas(ObjetSac):
 
 
 @dataclass
-class File(ObjetSac):
+class File(FrLangObject):
     items: list[Value] = field(default_factory=list)
 
     @property
     def type_name(self) -> str:
-        return "file"
+        return "File"
 
     def describe(self) -> str:
         inner = ", ".join(format_value(item) for item in self.items)
-        return f"file [{inner}]"
+        return f"File [{inner}]"
 
     def call_method(
         self,
@@ -291,12 +302,45 @@ class File(ObjetSac):
                 raise unknown_object_method(self.type_name, name, line, column)
 
 
-OBJECT_TYPES: dict[str, Callable[[], ObjetSac]] = {
-    "rangée": Rangee,
-    "sac": Sac,
-    "carnet": Carnet,
-    "tas": Tas,
-    "file": File,
+@dataclass
+class Mots(FrLangObject):
+    text: str = ""
+
+    @property
+    def type_name(self) -> str:
+        return "Mots"
+
+    def describe(self) -> str:
+        return self.text
+
+    def call_method(
+        self,
+        name: str,
+        args: list[Value],
+        line: int,
+        column: int,
+    ) -> Value | None:
+        match name:
+            case "inverser":
+                _expect_count(name, args, 0, line, column)
+                return Mots(self.text[::-1])
+            case "equals":
+                _expect_count(name, args, 1, line, column)
+                other = args[0]
+                if isinstance(other, Mots):
+                    return self.text == other.text
+                return False
+            case _:
+                raise unknown_object_method(self.type_name, name, line, column)
+
+
+OBJECT_TYPES: dict[str, Callable[[], FrLangObject]] = {
+    "Mots": Mots,
+    "Rangee": Rangee,
+    "Sac": Sac,
+    "Carnet": Carnet,
+    "Tas": Tas,
+    "File": File,
 }
 
 
@@ -304,5 +348,66 @@ def is_object_type(name: str) -> bool:
     return name in OBJECT_TYPES
 
 
-def create_object(type_name: str) -> ObjetSac:
+def create_object(type_name: str) -> FrLangObject:
     return OBJECT_TYPES[type_name]()
+
+
+def fill_list_object(obj: FrLangObject, args: list[Value], line: int, column: int) -> FrLangObject:
+    if isinstance(obj, Rangee):
+        obj.items = list(args)
+        return obj
+    if isinstance(obj, Sac):
+        items: list[Value] = []
+        for value in args:
+            if value not in items:
+                items.append(value)
+        obj.items = items
+        return obj
+    if isinstance(obj, (Tas, File)):
+        obj.items = list(args)
+        return obj
+    raise wrong_constructor_argument_count(obj.type_name, 0, len(args), line, column)
+
+
+def fill_carnet_object(
+    carnet: Carnet,
+    entries: dict[str, Value],
+    line: int,
+    column: int,
+) -> Carnet:
+    for label, value in entries.items():
+        carnet._etiqueter(label, value, line, column)
+    return carnet
+
+
+def fill_mots_object(
+    obj: FrLangObject,
+    args: list[Value],
+    line: int,
+    column: int,
+) -> Mots:
+    if not isinstance(obj, Mots):
+        raise wrong_constructor_argument_count(obj.type_name, 0, len(args), line, column)
+    if len(args) > 1:
+        raise wrong_constructor_argument_count(obj.type_name, 1, len(args), line, column)
+    if not args:
+        return obj
+    arg = args[0]
+    if isinstance(arg, str):
+        return Mots(arg)
+    if isinstance(arg, Mots):
+        return Mots(arg.text)
+    raise wrong_constructor_argument_count(obj.type_name, 1, len(args), line, column)
+
+
+def default_value_for_type(type_spec: TypeSpec) -> Value:
+    if is_pointer_type(type_spec):
+        return NOTHING
+    if isinstance(type_spec, ClassType):
+        raise ValueError(f"Pas de valeur par défaut pour la classe {type_spec.name}")
+    assert isinstance(type_spec, VarType)
+    if is_primitive_var_type(type_spec):
+        return NOTHING
+    if is_object_var_type(type_spec):
+        return create_object(type_spec.value)
+    raise ValueError(f"Type inconnu : {type_spec}")

@@ -1,0 +1,30 @@
+definir fonction est_premier(nombre n) {
+    si n < 2 {
+        retourne faux;
+    }
+    soit nombre d = 2;
+    tant d * d <= n {
+        si n mod d == 0 {
+            retourne faux;
+        }
+        d = d + 1;
+    }
+    retourne vrai;
+} retourne logique
+
+definir fonction n_premiers_primes(nombre n) {
+    soit Rangee resultat = nouveau Rangee();
+    soit nombre candidat = 2;
+    soit nombre compte = 0;
+    tant compte < n {
+        si est_premier(candidat) {
+            resultat.ajouter(candidat);
+            compte = compte + 1;
+        }
+        candidat = candidat + 1;
+    }
+    retourne resultat;
+} retourne Rangee
+
+soit nombre n = 10;
+afficher n_premiers_primes(n);

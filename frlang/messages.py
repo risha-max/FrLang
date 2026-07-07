@@ -1,10 +1,17 @@
 """Messages d'erreur courts et simples, pour les élèves."""
 
-from sac.errors import LexerError, ParseError
+from frlang.errors import LexerError, ParseError
 
 _OPERATORS_HINT = "Tu peux utiliser : +  -  *  /  mod  ^  et des parenthèses ( )"
 _STATEMENT_HINT = "N'oublie pas le ; à la fin. Exemple : soit nombre x = 5;"
-_TYPES_HINT = "Les sortes possibles : nombre, mots, logique, rangée, sac, carnet, tas, file."
+_TYPES_HINT = "Les sortes possibles : nombre, logique, Mots, Rangee, Sac, Carnet, Tas, File."
+_OBJECT_TYPE_RENAMES = {
+    "rangée": "Rangee",
+    "sac": "Sac",
+    "carnet": "Carnet",
+    "tas": "Tas",
+    "file": "File",
+}
 
 
 def unknown_word(word: str, line: int, column: int) -> LexerError:
@@ -15,6 +22,9 @@ def unknown_word(word: str, line: int, column: int) -> LexerError:
         hint = "Écris plutôt nombre. Exemple : soit nombre age = 12;"
     elif word in {"vrai_faux", "booleen", "bool"}:
         hint = "Écris plutôt logique. Exemple : soit logique actif = vrai;"
+    elif word in _OBJECT_TYPE_RENAMES:
+        new_name = _OBJECT_TYPE_RENAMES[word]
+        hint = f"Les objets commencent par une majuscule. Écris plutôt {new_name}. Exemple : nouveau {new_name}();"
 
     return LexerError(
         f"Je ne connais pas ce mot : « {word} ».",
@@ -48,6 +58,54 @@ def incomplete_number(line: int, column: int) -> LexerError:
         line=line,
         column=column,
         hint="Exemple : 3.14",
+    )
+
+
+def invalid_binary_literal(content: str, line: int, column: int) -> LexerError:
+    return LexerError(
+        f"Ce nombre binaire est mal écrit : « b'{content}' ».",
+        line=line,
+        column=column,
+        hint="Un nombre binaire utilise seulement 0 et 1. Exemple : b'1010'",
+    )
+
+
+def invalid_hex_literal(content: str, line: int, column: int) -> LexerError:
+    return LexerError(
+        f"Ce nombre hexadécimal est mal écrit : « h'{content}' ».",
+        line=line,
+        column=column,
+        hint="Utilise 0-9 et a-f. Exemple : h'1A2B' ou h'10471284'",
+    )
+
+
+def empty_based_literal(base: str, line: int, column: int) -> LexerError:
+    label = "binaire" if base == "binary" else "hexadécimal"
+    example = "b'1010'" if base == "binary" else "h'1A'"
+    return LexerError(
+        f"Il manque des chiffres dans ce nombre {label}.",
+        line=line,
+        column=column,
+        hint=f"Exemple : soit nombre x = {example};",
+    )
+
+
+def unknown_number_prefix(prefix: str, line: int, column: int) -> LexerError:
+    return LexerError(
+        f"Je ne connais pas « {prefix}'...' » pour un nombre.",
+        line=line,
+        column=column,
+        hint="Pour un nombre, utilise b'...' (binaire) ou h'...' (hexadécimal).",
+    )
+
+
+def unterminated_number_literal(base: str, line: int, column: int) -> LexerError:
+    label = base if base in {"b", "h"} else "nombre"
+    return LexerError(
+        f"Il manque une apostrophe « ' » pour fermer ce nombre.",
+        line=line,
+        column=column,
+        hint="Exemple : soit nombre x = b'1010';",
     )
 
 
@@ -153,7 +211,7 @@ def expected_value(symbol: str, line: int, column: int) -> ParseError:
             hint="Exemple : soit logique actif = vrai;",
         )
 
-    if symbol in {"nombre", "mots", "logique", "rangée", "sac", "carnet", "tas", "file"}:
+    if symbol in {"nombre", "logique", "Mots", "Rangee", "Sac", "Carnet", "Tas", "File"}:
         return type_in_expression(symbol, line, column)
 
     return ParseError(
@@ -176,7 +234,7 @@ def missing_semicolon(line: int, column: int) -> ParseError:
 def expected_type(line: int, column: int, *, found: str | None = None) -> ParseError:
     if found is not None:
         return ParseError(
-            f"Avant « {found} », il manque la sorte (nombre, mots, etc.).",
+            f"Avant « {found} », il manque la sorte (nombre, Mots, etc.).",
             line=line,
             column=column,
             hint="Exemple : soit nombre x = 5;",
@@ -281,7 +339,7 @@ def type_mismatch(
 
 
 def wrong_type_in_expression(var_type: str, line: int, column: int) -> ParseError:
-    if var_type in {"rangée", "sac", "carnet", "tas", "file"}:
+    if var_type in {"Mots", "Rangee", "Sac", "Carnet", "Tas", "File"}:
         return object_in_numeric_expression(var_type, line, column)
 
     return ParseError(
@@ -295,21 +353,21 @@ def wrong_type_in_expression(var_type: str, line: int, column: int) -> ParseErro
 def _type_hint(var_type: str) -> str:
     match var_type:
         case "nombre":
-            return "Exemple : soit nombre age = 12;"
-        case "mots":
-            return 'Exemple : soit mots nom = "Léa";'
+            return "Exemple : soit nombre age = 12; ou b'1010'; ou h'1A';"
+        case "Mots":
+            return 'Exemple : soit Mots nom = nouveau Mots("Léa"); ou soit Mots nom = "Léa";'
         case "logique":
             return "Exemple : soit logique actif = vrai;"
-        case "rangée":
-            return "Exemple : soit rangée notes = rangée [10, 20];"
-        case "sac":
-            return 'Exemple : soit sac fruits = sac ["pomme"];'
-        case "carnet":
-            return 'Exemple : soit carnet eleve = carnet [nom: "Léa"];'
-        case "tas":
-            return "Exemple : soit tas assiettes = tas [];"
-        case "file":
-            return "Exemple : soit file attente = file [];"
+        case "Rangee":
+            return "Exemple : soit Rangee notes = nouveau Rangee(10, 20);"
+        case "Sac":
+            return 'Exemple : soit Sac fruits = nouveau Sac("pomme");'
+        case "Carnet":
+            return 'Exemple : soit Carnet eleve = nouveau Carnet(nom: "Léa");'
+        case "Tas":
+            return "Exemple : soit Tas assiettes = nouveau Tas();"
+        case "File":
+            return "Exemple : soit File attente = nouveau File();"
         case str() if var_type.startswith("pointeur "):
             return f"Exemple : soit {var_type} p = adresse(x);"
         case _:
@@ -376,16 +434,16 @@ def index_out_of_range(
         f"La place {position} n'existe pas (il y en a {size}).",
         line=line,
         column=column,
-        hint="La première place d'une rangée est 1.",
+        hint="La première place d'une Rangee est 1.",
     )
 
 
 def sac_no_order_access(method: str, line: int, column: int) -> ParseError:
     return ParseError(
-        f"Dans un sac, on ne peut pas utiliser « {method} ».",
+        f"Dans un Sac, on ne peut pas utiliser « {method} ».",
         line=line,
         column=column,
-        hint="Avec un sac, utilise ajouter, retirer ou contient.",
+        hint="Avec un Sac, utilise ajouter, retirer ou contient.",
     )
 
 
@@ -436,15 +494,17 @@ def expected_method_parentheses(method: str, line: int, column: int) -> ParseErr
 
 def _object_methods_hint(obj_type: str) -> str:
     match obj_type:
-        case "rangée":
+        case "Mots":
+            return "Tu peux utiliser : inverser, equals."
+        case "Rangee":
             return "Tu peux utiliser : ajouter, element, premier, dernier, taille, contient, vider."
-        case "sac":
+        case "Sac":
             return "Tu peux utiliser : ajouter, retirer, taille, contient, vider."
-        case "carnet":
+        case "Carnet":
             return "Tu peux utiliser : etiqueter, element, contient, etiquettes, taille, vider."
-        case "tas":
+        case "Tas":
             return "Tu peux utiliser : empiler, depiler, taille, vide."
-        case "file":
+        case "File":
             return "Tu peux utiliser : enfiler, defiler, taille, vide."
         case _:
             return "Vérifie le mot après le point."
@@ -495,6 +555,24 @@ def unexpected_return_type(line: int, column: int) -> ParseError:
     )
 
 
+def return_outside_function(line: int, column: int) -> ParseError:
+    return ParseError(
+        "« retourne » ne peut être utilisé que dans une fonction.",
+        line=line,
+        column=column,
+        hint="Écris retourne seulement entre { } d'une fonction.",
+    )
+
+
+def expected_logique_condition(line: int, column: int) -> ParseError:
+    return ParseError(
+        "J'attendais une condition (vrai, faux, comparaison ou appel logique).",
+        line=line,
+        column=column,
+        hint="Exemple : si x < 10 { ... } ou si vrai { ... }",
+    )
+
+
 def missing_return_statement(return_type: str, line: int, column: int) -> ParseError:
     return ParseError(
         f"Cette fonction doit retourner un {return_type}.",
@@ -537,6 +615,24 @@ def adresse_requires_variable(line: int, column: int) -> ParseError:
         line=line,
         column=column,
         hint="Exemple : adresse(x) et non adresse(5)",
+    )
+
+
+def type_requires_argument(line: int, column: int) -> ParseError:
+    return ParseError(
+        "type() a besoin d'une valeur.",
+        line=line,
+        column=column,
+        hint="Exemple : type(x) ou type(5)",
+    )
+
+
+def type_wrong_argument_count(line: int, column: int) -> ParseError:
+    return ParseError(
+        "type() ne prend qu'une seule valeur.",
+        line=line,
+        column=column,
+        hint="Exemple : type(x) et non type(x, y)",
     )
 
 
@@ -611,10 +707,10 @@ def assign_to_undefined(name: str, line: int, column: int) -> ParseError:
 
 def expected_function_name(line: int, column: int) -> ParseError:
     return ParseError(
-        "Il manque le nom de la fonction après definir.",
+        "Il manque le nom de la fonction après fonction.",
         line=line,
         column=column,
-        hint="Exemple : definir double(n: nombre) { ... }",
+        hint="Exemple : definir fonction double(nombre n) { ... }",
     )
 
 
@@ -623,5 +719,214 @@ def expected_parameter_list(line: int, column: int) -> ParseError:
         "Il manque la liste des paramètres entre ( ).",
         line=line,
         column=column,
-        hint="Exemple : definir double(n: nombre) { ... }",
+        hint="Exemple : definir fonction double(nombre n) { ... }",
+    )
+
+
+def expected_fonction_or_classe(line: int, column: int) -> ParseError:
+    return ParseError(
+        "Après definir, écris fonction ou classe.",
+        line=line,
+        column=column,
+        hint="Exemple : definir fonction dire() { ... } ou definir classe Personne { ... }",
+    )
+
+
+def expected_class_name(line: int, column: int) -> ParseError:
+    return ParseError(
+        "Il manque le nom de la classe après classe.",
+        line=line,
+        column=column,
+        hint="Exemple : definir classe Personne { ... }",
+    )
+
+
+def class_already_defined(name: str, line: int, column: int) -> ParseError:
+    return ParseError(
+        f"La classe « {name} » existe déjà.",
+        line=line,
+        column=column,
+        hint="Choisis un autre nom pour cette classe.",
+    )
+
+
+def undefined_class(name: str, line: int, column: int) -> ParseError:
+    return ParseError(
+        f"Je ne connais pas la classe « {name} ».",
+        line=line,
+        column=column,
+        hint="Écris definir classe avant de l'utiliser.",
+    )
+
+
+def cannot_redefine_original(line: int, column: int) -> ParseError:
+    return ParseError(
+        "La classe Original existe déjà — tu ne peux pas la redéfinir.",
+        line=line,
+        column=column,
+        hint="Toutes les classes héritent déjà de Original.",
+    )
+
+
+def undefined_parent_class(name: str, line: int, column: int) -> ParseError:
+    return ParseError(
+        f"Je ne connais pas la classe parente « {name} ».",
+        line=line,
+        column=column,
+        hint="Crée la classe parente avant, ou enlève herite de.",
+    )
+
+
+def inheritance_cycle(name: str, parent: str, line: int, column: int) -> ParseError:
+    return ParseError(
+        f"« {name} » ne peut pas hériter de « {parent} » (boucle).",
+        line=line,
+        column=column,
+        hint="Vérifie la chaîne herite de.",
+    )
+
+
+def duplicate_class_field(name: str, line: int, column: int) -> ParseError:
+    return ParseError(
+        f"L'attribut « {name} » est déjà dans cette classe.",
+        line=line,
+        column=column,
+        hint="Choisis un autre nom pour cet attribut.",
+    )
+
+
+def duplicate_class_method(name: str, line: int, column: int) -> ParseError:
+    return ParseError(
+        f"La fonction « {name} » est déjà dans cette classe.",
+        line=line,
+        column=column,
+        hint="Une seule fonction par nom dans la même classe.",
+    )
+
+
+def unexpected_in_class(token: str, line: int, column: int) -> ParseError:
+    return ParseError(
+        f"Je ne comprends pas « {token} » dans cette classe.",
+        line=line,
+        column=column,
+        hint="Dans une classe, tu peux écrire : soit ... = ...; ou definir fonction ...",
+    )
+
+
+def unknown_instance_method(class_name: str, method: str, line: int, column: int) -> ParseError:
+    return ParseError(
+        f"La classe « {class_name} » ne connaît pas « {method} ».",
+        line=line,
+        column=column,
+        hint="Vérifie le nom de la fonction après le point.",
+    )
+
+
+def unknown_instance_field(class_name: str, field: str, line: int, column: int) -> ParseError:
+    return ParseError(
+        f"La classe « {class_name} » n'a pas d'attribut « {field} ».",
+        line=line,
+        column=column,
+        hint="Vérifie le nom après le point.",
+    )
+
+
+def rien_not_allowed_for_type(var_type: str, line: int, column: int) -> ParseError:
+    return ParseError(
+        f"« rien » ne convient pas pour un {var_type}.",
+        line=line,
+        column=column,
+        hint="Utilise rien seulement pour nombre, logique ou pointeur.",
+    )
+
+
+def nothing_value_not_allowed(name: str, line: int, column: int) -> ParseError:
+    return ParseError(
+        f"« {name} » vaut rien — il faut d'abord lui donner une valeur.",
+        line=line,
+        column=column,
+        hint="Écris une valeur avec = avant de l'utiliser.",
+    )
+
+
+def expected_herite_de(line: int, column: int) -> ParseError:
+    return ParseError(
+        "Après herite, il faut écrire de et le nom de la classe.",
+        line=line,
+        column=column,
+        hint="Exemple : definir classe Enfant herite de Parent { ... }",
+    )
+
+
+def use_nouveau_to_create(type_name: str, line: int, column: int) -> ParseError:
+    return ParseError(
+        f"Pour créer un {type_name}, écris : nouveau {type_name}()",
+        line=line,
+        column=column,
+        hint=f"Exemple : soit {type_name} boite = nouveau {type_name}();",
+    )
+
+
+def deprecated_object_literal_syntax(type_name: str, line: int, column: int) -> ParseError:
+    modern = _OBJECT_TYPE_RENAMES.get(type_name, type_name)
+    return ParseError(
+        f"On ne crée plus un {modern} avec des crochets [ ].",
+        line=line,
+        column=column,
+        hint=f"Écris plutôt : nouveau {modern}() ou nouveau {modern}(1, 2)",
+    )
+
+
+def object_name_needs_capital(name: str, line: int, column: int) -> ParseError:
+    return ParseError(
+        f"Le nom d'objet « {name} » doit commencer par une majuscule.",
+        line=line,
+        column=column,
+        hint="Exemple : definir classe Personne { ... } ou nouveau Rangee();",
+    )
+
+
+def expected_type_after_nouveau(line: int, column: int) -> ParseError:
+    return ParseError(
+        "Après nouveau, il faut le nom de l'objet à créer.",
+        line=line,
+        column=column,
+        hint="Exemple : nouveau Rangee() ou nouveau Personne();",
+    )
+
+
+def no_matching_constructor(class_name: str, argc: int, line: int, column: int) -> ParseError:
+    if argc == 0:
+        hint = f"Ajoute constructeur() dans la classe {class_name}, ou enlève les arguments."
+    else:
+        hint = f"Vérifie le constructeur de {class_name} (nombre d'arguments)."
+    return ParseError(
+        f"Aucun constructeur de {class_name} ne correspond à {argc} argument(s).",
+        line=line,
+        column=column,
+        hint=hint,
+    )
+
+
+def duplicate_class_constructor(argc: int, line: int, column: int) -> ParseError:
+    return ParseError(
+        f"Il y a déjà un constructeur avec {argc} argument(s).",
+        line=line,
+        column=column,
+        hint="Chaque constructeur doit avoir un nombre d'arguments différent.",
+    )
+
+
+def wrong_constructor_argument_count(
+    type_name: str,
+    expected: int,
+    got: int,
+    line: int,
+    column: int,
+) -> ParseError:
+    return ParseError(
+        f"Le constructeur de {type_name} ne prend pas {got} argument(s) comme ça.",
+        line=line,
+        column=column,
+        hint=f"Exemple : nouveau {type_name}() pour un objet vide.",
     )

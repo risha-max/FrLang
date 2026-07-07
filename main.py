@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-"""Évalue des expressions et de petits programmes Sac."""
+"""Évalue des expressions et de petits programmes FrLang."""
 
 from __future__ import annotations
 
 import sys
 
-from sac import Interpreter, LexerError, ParseError
-from sac.lexer import Lexer
-from sac.types import Value, format_value
+from frlang import Interpreter, LexerError, ParseError
+from frlang.lexer import Lexer
+from frlang.types import Value, format_value
 
 
 def evaluate(source: str) -> tuple[Value | None, list[str]]:
@@ -25,7 +25,7 @@ def print_tokens(source: str) -> None:
 
 
 def repl() -> None:
-    print("Sac — tape « quitter » pour sortir")
+    print("FrLang — tape « quitter » pour sortir")
     while True:
         try:
             line = input("> ").strip()

@@ -2,18 +2,32 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import TypeAlias
 
-from sac.pointers import Pointer
+from frlang.pointers import Pointer
+
+
+class NothingType:
+    __slots__ = ()
+
+    def __repr__(self) -> str:
+        return "rien"
+
+
+NOTHING = NothingType()
+
+
+def is_nothing(value: object) -> bool:
+    return value is NOTHING
 
 
 class VarType(Enum):
     NOMBRE = "nombre"
-    MOTS = "mots"
+    MOTS = "Mots"
     LOGIQUE = "logique"
-    RANGEE = "rangée"
-    SAC = "sac"
-    CARNET = "carnet"
-    TAS = "tas"
-    FILE = "file"
+    RANGEE = "Rangee"
+    SAC = "Sac"
+    CARNET = "Carnet"
+    TAS = "Tas"
+    FILE = "File"
 
 
 @dataclass(frozen=True, slots=True)
@@ -25,9 +39,18 @@ class PointerType:
         return f"pointeur {self.target.value}"
 
 
-TypeSpec: TypeAlias = VarType | PointerType
-StoredValue: TypeAlias = int | float | str | bool | object | Pointer
-Value: TypeAlias = int | float | str | bool | object
+@dataclass(frozen=True, slots=True)
+class ClassType:
+    name: str
+
+    @property
+    def value(self) -> str:
+        return self.name
+
+
+TypeSpec: TypeAlias = VarType | PointerType | ClassType
+StoredValue: TypeAlias = int | float | str | bool | object | Pointer | NothingType
+Value: TypeAlias = int | float | str | bool | object | NothingType
 
 
 def parse_type_name(name: str) -> VarType | None:
@@ -37,10 +60,32 @@ def parse_type_name(name: str) -> VarType | None:
     return None
 
 
+def is_capitalized_type_name(name: str) -> bool:
+    return bool(name) and name[0].isupper()
+
+
+_LEGACY_OBJECT_TYPE_NAMES: dict[str, VarType] = {
+    "rangée": VarType.RANGEE,
+    "sac": VarType.SAC,
+    "carnet": VarType.CARNET,
+    "tas": VarType.TAS,
+    "file": VarType.FILE,
+    "mots": VarType.MOTS,
+}
+
+
+def legacy_object_type_name(name: str) -> VarType | None:
+    return _LEGACY_OBJECT_TYPE_NAMES.get(name)
+
+
 def format_type_name(type_spec: TypeSpec) -> str:
-    if isinstance(type_spec, PointerType):
+    if isinstance(type_spec, (PointerType, ClassType)):
         return type_spec.value
     return type_spec.value
+
+
+def is_class_type(type_spec: TypeSpec) -> bool:
+    return isinstance(type_spec, ClassType)
 
 
 def is_pointer_type(type_spec: TypeSpec) -> bool:
@@ -53,8 +98,13 @@ def pointer_target_type(type_spec: TypeSpec) -> VarType | None:
     return None
 
 
+def is_primitive_var_type(var_type: VarType) -> bool:
+    return var_type in {VarType.NOMBRE, VarType.LOGIQUE}
+
+
 def is_object_var_type(var_type: VarType) -> bool:
     return var_type in {
+        VarType.MOTS,
         VarType.RANGEE,
         VarType.SAC,
         VarType.CARNET,
@@ -70,6 +120,8 @@ def format_pointer(pointer: Pointer) -> str:
 
 
 def format_value(value: StoredValue) -> str:
+    if is_nothing(value):
+        return "rien"
     if isinstance(value, Pointer):
         return format_pointer(value)
     if hasattr(value, "describe") and callable(value.describe):

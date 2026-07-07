@@ -4,7 +4,7 @@ Instructions for AI coding agents working in this repository.
 
 ## Project
 
-FrLang — langage de programmation en français pour le tutorat (package Python `sac`).
+FrLang — langage de programmation en français pour le tutorat (package Python `frlang`).
 
 ## Stack
 

@@ -1,7 +1,7 @@
 import pytest
 
-from sac.errors import ParseError
-from sac.interpreter import Interpreter
+from frlang.errors import ParseError
+from frlang.interpreter import Interpreter
 
 
 def test_adresse_and_valeur_primitive() -> None:
@@ -16,7 +16,7 @@ def test_adresse_and_valeur_primitive() -> None:
 
 def test_incrementer_with_pointer_param() -> None:
     result = Interpreter(
-        "definir incrementer(p: pointeur nombre) { valeur(p) = valeur(p) + 1; } "
+        "definir fonction incrementer(pointeur nombre p) { valeur(p) = valeur(p) + 1; } "
         "soit nombre x = 3; "
         "incrementer(adresse(x)); "
         "x;"
@@ -26,16 +26,16 @@ def test_incrementer_with_pointer_param() -> None:
 
 def test_pass_by_value_still_copies_object() -> None:
     result = Interpreter(
-        "definir essayer(s: sac) { s.ajouter(99); } "
-        "soit sac boite = sac [1]; essayer(boite); boite.taille();"
+        "definir fonction essayer(Sac s) { s.ajouter(99); } "
+        "soit Sac boite = nouveau Sac(1); essayer(boite); boite.taille();"
     ).run()
     assert result == 1
 
 
 def test_pass_by_pointer_mutates_object() -> None:
     result = Interpreter(
-        "definir remplir(p: pointeur sac) { valeur(p).ajouter(99); } "
-        "soit sac boite = sac [1]; remplir(adresse(boite)); boite.taille();"
+        "definir fonction remplir(pointeur Sac p) { valeur(p).ajouter(99); } "
+        "soit Sac boite = nouveau Sac(1); remplir(adresse(boite)); boite.taille();"
     ).run()
     assert result == 2
 
@@ -53,7 +53,7 @@ def test_valeur_requires_pointer() -> None:
 def test_pointer_type_mismatch_on_declaration() -> None:
     with pytest.raises(ParseError, match="doit viser"):
         Interpreter(
-            "soit mots nom = \"Léa\"; "
+            "soit Mots nom = \"Léa\"; "
             "soit pointeur nombre p = adresse(nom);"
         ).run()
 

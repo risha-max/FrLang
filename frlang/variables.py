@@ -1,5 +1,5 @@
-from sac.pointers import Pointer
-from sac.types import TypeSpec, Value
+from frlang.pointers import Pointer
+from frlang.types import TypeSpec, Value
 
 
 class Variable:

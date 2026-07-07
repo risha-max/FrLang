@@ -6,7 +6,7 @@ from typing import Any
 
 @dataclass
 class Pointer:
-    """Pointeur vers une variable Sac (partage la même boîte)."""
+    """Pointeur vers une variable FrLang (partage la même boîte)."""
 
     target: Any
     target_name: str

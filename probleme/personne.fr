@@ -1,0 +1,89 @@
+definir classe Personne {
+    soit nombre age;
+    soit Mots prenom;
+    soit Mots nom_famille;
+
+    constructeur() {
+    }
+
+    constructeur(nombre un_age, Mots un_prenom, Mots un_nom) {
+        age = un_age;
+        prenom = un_prenom;
+        nom_famille = un_nom;
+    }
+
+    definir fonction afficher() {
+        afficher prenom;
+        afficher " ";
+        afficher nom_famille;
+        afficher ", ";
+        afficher age;
+        afficher " ans";
+    }
+
+    definir fonction equals(Personne autre) {
+        si age != autre.age {
+            retourne faux;
+        }
+        si prenom.equals(autre.prenom) == faux {
+            retourne faux;
+        }
+        si nom_famille.equals(autre.nom_famille) == faux {
+            retourne faux;
+        }
+        retourne vrai;
+    } retourne logique
+}
+
+definir classe Etudiant herite de Personne {
+    soit nombre note;
+
+    constructeur() {
+    }
+
+    constructeur(nombre un_age, Mots un_prenom, Mots un_nom, nombre une_note) {
+        age = un_age;
+        prenom = un_prenom;
+        nom_famille = un_nom;
+        note = une_note;
+    }
+
+    definir fonction afficher() {
+        afficher prenom;
+        afficher " ";
+        afficher nom_famille;
+        afficher ", ";
+        afficher age;
+        afficher " ans, note ";
+        afficher note;
+    }
+
+    definir fonction meilleur(Etudiant autre) {
+        si note > autre.note {
+            retourne vrai;
+        }
+        retourne faux;
+    } retourne logique
+}
+
+soit nombre x;
+soit logique ok;
+soit pointeur nombre p;
+afficher x;
+afficher ok;
+afficher p;
+
+soit Personne defaut = nouveau Personne();
+defaut.afficher();
+
+soit Personne lea = nouveau Personne(25, "Léa", "Martin");
+soit Personne lea2 = nouveau Personne(25, "Léa", "Martin");
+lea.afficher();
+afficher lea.equals(lea2);
+afficher defaut.equals(lea);
+
+soit Etudiant alice = nouveau Etudiant(20, "Alice", "Martin", 85);
+soit Etudiant bob = nouveau Etudiant(20, "Bob", "Martin", 72);
+alice.afficher();
+afficher alice.meilleur(bob);
+afficher bob.meilleur(alice);
