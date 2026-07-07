@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from frlang.classes import (
     ORIGINAL_CLASS_NAME,
     ClassConstructor,
