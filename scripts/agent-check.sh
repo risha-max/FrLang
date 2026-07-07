@@ -21,11 +21,23 @@ fi
 "$PYTHON" main.py 'definir fonction double(nombre n) { retourne n * 2; } retourne nombre double(5);' | grep -qx "10"
 "$PYTHON" main.py 'definir fonction incrementer(pointeur nombre p) { valeur(p) = valeur(p) + 1; } soit nombre x = 3; incrementer(adresse(x)); x;' | grep -qx "4"
 "$PYTHON" -m pip install -e . -q
-BIN="$(dirname "$PYTHON")"
+BINDIR="$("$PYTHON" -c "import os, sys; print(os.path.dirname(sys.executable))")"
+FRBIN="$BINDIR/frlang"
+IFRBIN="$BINDIR/ifrlang"
+if [[ ! -x "$FRBIN" ]]; then
+  FRBIN="$("$PYTHON" -c "import shutil; print(shutil.which('frlang') or '')")"
+fi
+if [[ ! -x "$IFRBIN" ]]; then
+  IFRBIN="$("$PYTHON" -c "import shutil; print(shutil.which('ifrlang') or '')")"
+fi
+if [[ -z "$FRBIN" || -z "$IFRBIN" || ! -x "$FRBIN" || ! -x "$IFRBIN" ]]; then
+  echo "agent-check: frlang/ifrlang introuvable après pip install -e ." >&2
+  exit 1
+fi
 TMP_FR="$(mktemp --suffix=.fr)"
 printf '%s\n' 'soit nombre x = 6; x + 1;' >"$TMP_FR"
-"$BIN/frlang" "$TMP_FR" | grep -qx "7"
+"$FRBIN" "$TMP_FR" | grep -qx "7"
 rm -f "$TMP_FR"
-printf '2 + 2;\nquitter\n' | "$BIN/ifrlang" | grep -Fq '4'
+printf '2 + 2;\nquitter\n' | "$IFRBIN" | grep -Fq '4'
 
 echo "agent-check: ok"
