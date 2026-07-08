@@ -31,6 +31,15 @@ class VarType(Enum):
 
 
 @dataclass(frozen=True, slots=True)
+class ClassType:
+    name: str
+
+    @property
+    def value(self) -> str:
+        return self.name
+
+
+@dataclass(frozen=True, slots=True)
 class PointerType:
     target: VarType | ClassType
 
@@ -39,15 +48,6 @@ class PointerType:
         if isinstance(self.target, ClassType):
             return f"pointeur {self.target.name}"
         return f"pointeur {self.target.value}"
-
-
-@dataclass(frozen=True, slots=True)
-class ClassType:
-    name: str
-
-    @property
-    def value(self) -> str:
-        return self.name
 
 
 @dataclass(frozen=True, slots=True)
