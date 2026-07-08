@@ -33,3 +33,11 @@ class ReturnSignal(Exception):
 
     def __init__(self, value: object | None) -> None:
         self.value = value
+
+
+class BreakSignal(Exception):
+    """Sortie anticipée d'une boucle (arreter)."""
+
+
+class ContinueSignal(Exception):
+    """Passe à l'itération suivante d'une boucle (continuer)."""

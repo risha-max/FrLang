@@ -439,7 +439,7 @@ def index_out_of_range(
         f"La place {position} n'existe pas (il y en a {size}).",
         line=line,
         column=column,
-        hint="La première place d'une Rangee est 1.",
+        hint="La première place d'une Rangee est 0.",
     )
 
 
@@ -1247,5 +1247,100 @@ def import_module_attribute_not_found(
         line=line,
         column=column,
         hint="Vérifie le nom dans le fichier importé.",
+    )
+
+
+def unterminated_block_comment(line: int, column: int) -> LexerError:
+    return LexerError(
+        "Commentaire « /* » jamais fermé par « */ ».",
+        line=line,
+        column=column,
+        hint="Ajoute « */ » pour fermer le commentaire.",
+    )
+
+
+def break_outside_loop(line: int, column: int) -> ParseError:
+    return ParseError(
+        "« arreter » ne peut être utilisé que dans une boucle.",
+        line=line,
+        column=column,
+        hint="Place arreter; à l'intérieur d'un tantque ou pourchaque.",
+    )
+
+
+def continue_outside_loop(line: int, column: int) -> ParseError:
+    return ParseError(
+        "« continuer » ne peut être utilisé que dans une boucle.",
+        line=line,
+        column=column,
+        hint="Place continuer; à l'intérieur d'un tantque ou pourchaque.",
+    )
+
+
+def input_eof(line: int, column: int) -> ParseError:
+    return ParseError(
+        "Plus aucune entrée n'est disponible.",
+        line=line,
+        column=column,
+        hint="Le programme attendait une ligne de texte.",
+    )
+
+
+def lire_invalid_number(raw: str, line: int, column: int) -> ParseError:
+    return ParseError(
+        f"« {raw} » n'est pas un nombre valide pour lire().",
+        line=line,
+        column=column,
+        hint="Écris un entier ou un décimal, par exemple 42 ou 3.14.",
+    )
+
+
+def lire_empty_input(line: int, column: int) -> ParseError:
+    return ParseError(
+        "lire() a reçu une ligne vide.",
+        line=line,
+        column=column,
+        hint="Écris un nombre sur la ligne d'entrée.",
+    )
+
+
+def factorial_negative(line: int, column: int) -> ParseError:
+    return ParseError(
+        "factorielle() n'accepte pas les nombres négatifs.",
+        line=line,
+        column=column,
+        hint="Utilise un entier positif ou zéro.",
+    )
+
+
+def math_requires_integer(name: str, line: int, column: int) -> ParseError:
+    return ParseError(
+        f"« {name} » doit être un entier.",
+        line=line,
+        column=column,
+        hint="Utilise un nombre entier sans décimales.",
+    )
+
+
+def random_invalid_range(line: int, column: int) -> ParseError:
+    return ParseError(
+        "Plage invalide pour random().",
+        line=line,
+        column=column,
+        hint="Exemples : random(), random(6), random(1, 6).",
+    )
+
+
+def native_wrong_argument_count(
+    name: str,
+    expected: str,
+    received: int,
+    line: int,
+    column: int,
+) -> ParseError:
+    return ParseError(
+        f"« {name} » attend {expected}, pas {received}.",
+        line=line,
+        column=column,
     )
 

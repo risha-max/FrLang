@@ -1,0 +1,17 @@
+definir fonction fizzbuzz(nombre n) {
+    soit Rangee resultat = nouveau Rangee();
+    pourchaque i dans range(1, n + 1) {
+        si i mod 15 == 0 {
+            resultat.ajouter("FizzBuzz");
+        } sinon si i mod 3 == 0 {
+            resultat.ajouter("Fizz");
+        } sinon si i mod 5 == 0 {
+            resultat.ajouter("Buzz");
+        } sinon {
+            resultat.ajouter(i);
+        }
+    }
+    retourne resultat;
+} retourne Rangee
+
+afficher fizzbuzz(15);

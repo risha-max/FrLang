@@ -16,12 +16,14 @@ from frlang.classes import (
     instances_equal,
     values_equal,
 )
-from frlang.errors import LexerError, ParseError, ReturnSignal
+from frlang.errors import BreakSignal, ContinueSignal, LexerError, ParseError, ReturnSignal
 from frlang.functions import Parameter, UserFunction, copy_value
 from frlang.lexer import Lexer, Token, TokenKind
 from frlang.messages import (
     adresse_requires_variable,
     assign_to_undefined,
+    break_outside_loop,
+    continue_outside_loop,
     deprecated_object_literal_syntax,
     division_by_zero,
     empty_expression,
@@ -105,7 +107,9 @@ from frlang.messages import (
     import_name_not_found,
     import_module_attribute_not_found,
     import_requires_module_name,
-    import_requires_import_keyword,
+    input_eof,
+    lire_empty_input,
+    lire_invalid_number,
     import_class_alias_not_supported,
 )
 from frlang.objects import (
@@ -127,6 +131,13 @@ from frlang.objects import (
     is_collection_object,
     is_object_type,
     iterate_collection,
+)
+from frlang.memory import (
+    PrimitiveArray,
+    attach_scalar_memory,
+    is_primitive_array,
+    make_primitive_array,
+    sync_scalar_memory,
 )
 from frlang.pointers import Pointer
 from frlang.types import (
@@ -152,23 +163,34 @@ from frlang.types import (
     parse_type_name,
     pointer_target_type,
 )
-from frlang.imports import LoadedModule, ModuleNamespace, resolve_module_path
+from frlang.imports import LoadedModule, ModuleNamespace, NativeFunction, resolve_module_path
+from frlang.stdlib import call_native_function, get_builtin_module
 from frlang.variables import Variable
 
 
 class Interpreter:
     """Interprète des expressions et de petits programmes avec variables."""
 
-    def __init__(self, source: str, *, source_path: Path | None = None) -> None:
+    def __init__(
+        self,
+        source: str,
+        *,
+        source_path: Path | None = None,
+        input_lines: list[str] | None = None,
+    ) -> None:
         self._tokens = Lexer(source).tokenize()
         self._position = 0
         self._scopes: list[dict[str, Variable]] = [{}]
         self._functions: dict[str, UserFunction] = {}
+        self._native_functions: dict[str, tuple[LoadedModule, str]] = {}
         self._classes: dict[str, ClassDef] = {ORIGINAL_CLASS_NAME: create_original_class()}
         self._current_class_name: str | None = None
         self._source_path: Path | None = source_path
         self._import_stack: list[Path] = []
         self._loaded_modules: dict[Path, LoadedModule] = {}
+        self._input_lines = list(input_lines) if input_lines is not None else None
+        self._input_index = 0
+        self._loop_depth = 0
         self.output: list[str] = []
 
     @classmethod
@@ -178,11 +200,15 @@ class Interpreter:
         interpreter._position = 0
         interpreter._scopes = [{}]
         interpreter._functions = {}
+        interpreter._native_functions = {}
         interpreter._classes = {ORIGINAL_CLASS_NAME: create_original_class()}
         interpreter._current_class_name = None
         interpreter._source_path = None
         interpreter._import_stack = []
         interpreter._loaded_modules = {}
+        interpreter._input_lines = None
+        interpreter._input_index = 0
+        interpreter._loop_depth = 0
         interpreter.output = []
         return interpreter
 
@@ -296,6 +322,14 @@ class Interpreter:
             elif self._check(TokenKind.RETOURNE):
                 token = self._peek()
                 raise return_outside_function(token.line, token.column)
+            elif self._check(TokenKind.IDENTIFIER) and str(self._peek().value) == "arreter":
+                token = self._advance()
+                self._consume_semicolon()
+                raise break_outside_loop(token.line, token.column)
+            elif self._check(TokenKind.IDENTIFIER) and str(self._peek().value) == "continuer":
+                token = self._advance()
+                self._consume_semicolon()
+                raise continue_outside_loop(token.line, token.column)
             else:
                 result = self._statement_expression()
                 self._consume_semicolon()
@@ -338,7 +372,11 @@ class Interpreter:
             self._consume_semicolon()
 
         self._check_value_type(name, var_type, value, name_token.line, name_token.column)
-        self._current_scope()[name] = Variable(var_type, value)
+        variable = Variable(var_type, value)
+        if isinstance(var_type, VarType) and is_primitive_var_type(var_type) and not is_pointer_type(var_type):
+            attach_scalar_memory(variable, var_type, value)
+            variable.value = variable._memory.python_value()
+        self._current_scope()[name] = variable
         return value
 
     def _define_dispatch(self) -> None:
@@ -592,8 +630,8 @@ class Interpreter:
                 else:
                     assert not isinstance(arg, Pointer)
                     if is_array_type(param.var_type):
-                        assert isinstance(arg, list)
-                        value = list(arg)
+                        assert is_primitive_array(arg)
+                        value = arg.copy()
                     elif isinstance(param.var_type, VarType):
                         value = self._coerce_argument(param.var_type, arg)
                         value = copy_value(value) if is_object_var_type(param.var_type) else value
@@ -700,11 +738,36 @@ class Interpreter:
             return args
 
         while True:
-            args.append(self._value_expression())
+            args.append(self._parse_argument_expression())
             if not self._match(TokenKind.COMMA):
                 break
 
         return args
+
+    def _parse_argument_expression(self) -> Value:
+        if self._argument_is_numeric_expression():
+            return self._numeric_expression()
+        return self._value_expression()
+
+    def _argument_is_numeric_expression(self) -> bool:
+        if (
+            self._check(TokenKind.NUMBER)
+            or self._check(TokenKind.MINUS)
+            or self._check(TokenKind.LPAREN)
+        ):
+            return True
+        if self._check(TokenKind.IDENTIFIER):
+            if self._peek_next().kind == TokenKind.LPAREN:
+                return True
+            if self._peek_next().kind == TokenKind.DOT:
+                return False
+            variable = self._lookup_variable_entry(
+                str(self._peek().value),
+                self._peek().line,
+                self._peek().column,
+            )
+            return isinstance(variable.var_type, VarType) and variable.var_type == VarType.NOMBRE
+        return False
 
     def _parse_carnet_constructor_args(self) -> dict[str, Value]:
         entries: dict[str, Value] = {}
@@ -780,8 +843,8 @@ class Interpreter:
                 else:
                     assert not isinstance(arg, Pointer)
                     if is_array_type(param.var_type):
-                        assert isinstance(arg, list)
-                        value = list(arg)
+                        assert is_primitive_array(arg)
+                        value = arg.copy()
                     elif isinstance(param.var_type, VarType):
                         value = self._coerce_argument(param.var_type, arg)
                         value = (
@@ -862,6 +925,17 @@ class Interpreter:
 
     def _call_user_function(self, name_token: Token) -> Value:
         name = str(name_token.value)
+        if name in self._native_functions:
+            module, native_name = self._native_functions[name]
+            spec = module.native_functions[native_name]
+            self._advance()
+            self._consume(TokenKind.LPAREN, expected_parameter_list)
+            args = self._parse_value_argument_list()
+            if not self._match(TokenKind.RPAREN):
+                token = self._peek()
+                raise missing_closing_paren(token.line, token.column)
+            return call_native_function(self, spec, args, name_token.line, name_token.column)
+
         if name not in self._functions:
             raise undefined_function(name, name_token.line, name_token.column)
 
@@ -883,12 +957,15 @@ class Interpreter:
             )
 
         saved_position = self._position
+        saved_loop_depth = self._loop_depth
+        self._loop_depth = 0
         self._push_scope()
         try:
             self._bind_function_parameters(func, arg_values, name_token.line, name_token.column)
             return self._execute_function_body(func)
         finally:
             self._position = saved_position
+            self._loop_depth = saved_loop_depth
             self._pop_scope()
 
     def _parse_function_arguments(self, func: UserFunction) -> list[Value | Pointer]:
@@ -946,8 +1023,8 @@ class Interpreter:
             else:
                 assert not isinstance(arg, Pointer)
                 if is_array_type(param.var_type):
-                    assert isinstance(arg, list)
-                    value = list(arg)
+                    assert is_primitive_array(arg)
+                    value = arg.copy()
                 elif isinstance(param.var_type, VarType):
                     value = self._coerce_argument(param.var_type, arg)
                     value = copy_value(value) if is_object_var_type(param.var_type) else value
@@ -1016,6 +1093,20 @@ class Interpreter:
             self._import_statement()
             return
 
+        if self._check(TokenKind.IDENTIFIER) and str(self._peek().value) == "arreter":
+            token = self._advance()
+            self._consume_semicolon()
+            if self._loop_depth == 0:
+                raise break_outside_loop(token.line, token.column)
+            raise BreakSignal()
+
+        if self._check(TokenKind.IDENTIFIER) and str(self._peek().value) == "continuer":
+            token = self._advance()
+            self._consume_semicolon()
+            if self._loop_depth == 0:
+                raise continue_outside_loop(token.line, token.column)
+            raise ContinueSignal()
+
         if self._check(TokenKind.RETOURNE):
             if function_context is None:
                 token = self._peek()
@@ -1057,26 +1148,58 @@ class Interpreter:
         self,
         function_context: tuple[TypeSpec | None, str, int, int] | None = None,
     ) -> None:
-        condition = self._logique_condition()
-        if condition:
+        if self._evaluate_if_branch(function_context):
+            self._skip_else_chain()
+            return
+
+        while self._match(TokenKind.SINON):
+            if self._check(TokenKind.SI):
+                self._advance()
+                if self._evaluate_if_branch(function_context):
+                    self._skip_else_chain()
+                    return
+                continue
             self._execute_block(function_context)
             return
 
-        self._skip_block()
-        if self._match(TokenKind.SINON):
+    def _evaluate_if_branch(
+        self,
+        function_context: tuple[TypeSpec | None, str, int, int] | None = None,
+    ) -> bool:
+        condition = self._logique_condition()
+        if condition:
             self._execute_block(function_context)
+            return True
+        self._skip_block()
+        return False
+
+    def _skip_else_chain(self) -> None:
+        while self._match(TokenKind.SINON):
+            if self._check(TokenKind.SI):
+                self._advance()
+                self._logique_condition()
+            self._skip_block()
 
     def _while_statement(
         self,
         function_context: tuple[TypeSpec | None, str, int, int] | None = None,
     ) -> None:
         start = self._position
-        while True:
-            self._position = start
-            if not self._logique_condition():
-                self._skip_block()
-                return
-            self._execute_block(function_context)
+        self._loop_depth += 1
+        try:
+            while True:
+                self._position = start
+                if not self._logique_condition():
+                    self._skip_block()
+                    return
+                try:
+                    self._execute_block(function_context)
+                except ContinueSignal:
+                    continue
+                except BreakSignal:
+                    return
+        finally:
+            self._loop_depth -= 1
 
     def _pourchaque_statement(
         self,
@@ -1103,19 +1226,27 @@ class Interpreter:
             raise expected_value("{", token.line, token.column)
         block_start = self._position
 
-        for item in items:
-            self._position = block_start
-            self._push_scope()
-            try:
-                loop_type = self._infer_loop_var_type(item)
-                loop_value = self._coerce_loop_value(item, loop_type)
-                self._current_scope()[loop_name] = Variable(loop_type, loop_value)
+        self._loop_depth += 1
+        try:
+            for item in items:
+                self._position = block_start
+                self._push_scope()
                 try:
-                    self._execute_block(function_context)
-                except ReturnSignal:
-                    raise
-            finally:
-                self._pop_scope()
+                    loop_type = self._infer_loop_var_type(item)
+                    loop_value = self._coerce_loop_value(item, loop_type)
+                    self._current_scope()[loop_name] = Variable(loop_type, loop_value)
+                    try:
+                        self._execute_block(function_context)
+                    except ContinueSignal:
+                        continue
+                    except BreakSignal:
+                        break
+                    except ReturnSignal:
+                        raise
+                finally:
+                    self._pop_scope()
+        finally:
+            self._loop_depth -= 1
 
     def _parse_pourchaque_iterable(self) -> FrLangObject:
         if self._check(TokenKind.IDENTIFIER) and str(self._peek().value) == "range":
@@ -1186,6 +1317,15 @@ class Interpreter:
                 break
 
     def _load_module(self, module_name: str, line: int, column: int) -> LoadedModule:
+        builtin = get_builtin_module(module_name)
+        if builtin is not None:
+            canonical = builtin.path
+            cached = self._loaded_modules.get(canonical)
+            if cached is not None:
+                return cached
+            self._loaded_modules[canonical] = builtin
+            return builtin
+
         try:
             path = resolve_module_path(module_name, self._source_path)
         except FileNotFoundError:
@@ -1279,6 +1419,14 @@ class Interpreter:
     ) -> None:
         scope = self._scopes[0]
 
+        if exported_name in module.native_functions:
+            if local_name in self._native_functions:
+                raise function_already_defined(local_name, line, column)
+            if local_name in self._functions:
+                raise function_already_defined(local_name, line, column)
+            self._native_functions[local_name] = (module, exported_name)
+            return
+
         if exported_name in module.functions:
             self._merge_module_classes(module, line, column)
             if local_name in self._functions:
@@ -1334,12 +1482,15 @@ class Interpreter:
             raise wrong_function_argument_count(name, len(func.params), len(args), line, column)
 
         saved_position = self._position
+        saved_loop_depth = self._loop_depth
+        self._loop_depth = 0
         self._push_module_scope(module)
         try:
             self._bind_function_parameters(func, args, line, column)
             return self._execute_function_body(func)
         finally:
             self._position = saved_position
+            self._loop_depth = saved_loop_depth
             self._pop_scope()
 
     def _resolve_module_class(
@@ -1395,13 +1546,31 @@ class Interpreter:
             token = self._peek()
             raise expected_value("{", token.line, token.column)
 
-        while not self._check(TokenKind.RBRACE):
-            if self._is_at_end():
-                token = self._previous()
-                raise missing_closing_brace(token.line, token.column)
-            self._block_statement(function_context)
+        pending: BreakSignal | ContinueSignal | None = None
+        try:
+            while not self._check(TokenKind.RBRACE):
+                if self._is_at_end():
+                    token = self._previous()
+                    raise missing_closing_brace(token.line, token.column)
+                self._block_statement(function_context)
+        except BreakSignal as signal:
+            pending = signal
+        except ContinueSignal as signal:
+            pending = signal
+        finally:
+            depth = 1
+            while depth > 0 and not self._is_at_end():
+                if self._check(TokenKind.LBRACE):
+                    self._advance()
+                    depth += 1
+                elif self._check(TokenKind.RBRACE):
+                    self._advance()
+                    depth -= 1
+                else:
+                    self._advance()
 
-        self._advance()
+        if pending is not None:
+            raise pending
 
     def _skip_block(self) -> None:
         if not self._match(TokenKind.LBRACE):
@@ -1449,6 +1618,24 @@ class Interpreter:
                 right = self._value_expression()
                 equal = values_equal(left, right)
                 return equal if operator.kind == TokenKind.EQEQ else not equal
+            if isinstance(left, bool):
+                return left
+            self._position = start
+
+        if self._check(TokenKind.IDENTIFIER) and self._peek_next().kind == TokenKind.DOT:
+            start = self._position
+            left = self._value_expression()
+            if isinstance(left, (int, float)) and self._match(
+                TokenKind.EQEQ,
+                TokenKind.NEQ,
+                TokenKind.LT,
+                TokenKind.GT,
+                TokenKind.LTE,
+                TokenKind.GTE,
+            ):
+                operator = self._previous()
+                right = self._numeric_expression()
+                return self._evaluate_comparison(left, operator.kind, right)
             if isinstance(left, bool):
                 return left
             self._position = start
@@ -1571,6 +1758,7 @@ class Interpreter:
         )
         self._consume_semicolon()
         self._check_value_type(name, variable.var_type, value, name_token.line, name_token.column)
+        value = sync_scalar_memory(variable, value)
         variable.value = value
 
     def _pointer_assignment(self) -> None:
@@ -1776,13 +1964,13 @@ class Interpreter:
         items: list[Value],
         line: int,
         column: int,
-    ) -> list[Value]:
+    ) -> PrimitiveArray:
         if len(items) > array_type.size:
             raise array_too_many_elements(len(items), array_type.size, line, column)
         padded = list(items)
         while len(padded) < array_type.size:
             padded.append(NOTHING)
-        return padded
+        return make_primitive_array(array_type.element, array_type.size, padded)
 
     def _parse_rangee_literal(self, line: int, column: int) -> Rangee:
         self._consume(TokenKind.LBRACE, missing_closing_brace)
@@ -1848,7 +2036,7 @@ class Interpreter:
             items = pointer.target.value
             capacity = array_size(pointer.target.var_type)
             assert capacity is not None
-            if not isinstance(items, list):
+            if not is_primitive_array(items):
                 raise array_index_out_of_bounds(pointer.offset, capacity, line, column)
             if pointer.offset < 0 or pointer.offset >= capacity:
                 raise array_index_out_of_bounds(pointer.offset, capacity, line, column)
@@ -1860,13 +2048,13 @@ class Interpreter:
             items = pointer.target.value
             capacity = array_size(pointer.target.var_type)
             assert capacity is not None
-            if not isinstance(items, list):
+            if not is_primitive_array(items):
                 raise array_index_out_of_bounds(pointer.offset, capacity, line, column)
             if pointer.offset < 0 or pointer.offset >= capacity:
                 raise array_index_out_of_bounds(pointer.offset, capacity, line, column)
             items[pointer.offset] = value
             return
-        pointer.target.value = value
+        pointer.target.value = sync_scalar_memory(pointer.target, value)
 
     def _parse_adresse_call(self) -> Pointer:
         token = self._peek()
@@ -1948,7 +2136,7 @@ class Interpreter:
         return variable.value
 
     def _parse_pointer_offset(self) -> int:
-        value = self._numeric_primary()
+        value = self._numeric_expression()
         if isinstance(value, bool) or not isinstance(value, int) or value < 0:
             token = self._previous()
             raise pointer_offset_requires_integer(token.line, token.column)
@@ -1965,21 +2153,9 @@ class Interpreter:
             self._advance()
             return NOTHING
 
-        if self._check(TokenKind.IDENTIFIER) and str(self._peek().value) == "adresse":
-            pointer = self._parse_adresse_call()
-            self._check_pointer_target_type(name, pointer_type.target, pointer, line, column)
-            return pointer
-
-        if self._check(TokenKind.IDENTIFIER):
-            var_name = str(self._peek().value)
-            variable = self._lookup_variable_entry(var_name, self._peek().line, self._peek().column)
-            if is_pointer_type(variable.var_type) and isinstance(variable.value, Pointer):
-                self._advance()
-                self._check_pointer_target_type(name, pointer_type.target, variable.value, line, column)
-                return variable.value.copy()
-
-        token = self._peek()
-        raise type_mismatch(name, pointer_type.value, str(token.value), line, column)
+        pointer = self._parse_pointer_operand()
+        self._check_pointer_target_type(name, pointer_type.target, pointer, line, column)
+        return pointer
 
     def _check_pointer_target_type(
         self,
@@ -2030,11 +2206,106 @@ class Interpreter:
         if target_type != expected_target:
             raise pointer_type_mismatch(name, expected_target.value, target_type.value, line, column)
 
+    def _parse_value_argument_list(self) -> list[Value]:
+        args: list[Value] = []
+        if self._check(TokenKind.RPAREN):
+            return args
+        while True:
+            args.append(self._value_expression())
+            if not self._match(TokenKind.COMMA):
+                break
+        return args
+
+    def _read_input_line(self, line: int, column: int, prompt: str | None = None) -> str:
+        import sys
+
+        if prompt is not None:
+            self.output.append(prompt)
+        if self._input_lines is not None:
+            if self._input_index >= len(self._input_lines):
+                raise input_eof(line, column)
+            text = self._input_lines[self._input_index]
+            self._input_index += 1
+            return text
+        if prompt is not None and sys.stdin.isatty():
+            entered = input(prompt)
+            if entered == "" and sys.stdin.isatty():
+                return ""
+            return entered.rstrip("\n")
+        if prompt is not None:
+            sys.stdout.write(prompt)
+            sys.stdout.flush()
+        text = sys.stdin.readline()
+        if text == "":
+            raise input_eof(line, column)
+        return text.rstrip("\n")
+
+    def _parse_demander_call(self) -> Mots:
+        token = self._peek()
+        self._advance()
+        self._consume(TokenKind.LPAREN, expected_value)
+        prompt: str | None = None
+        if not self._check(TokenKind.RPAREN):
+            prompt_value = self._value_expression()
+            if isinstance(prompt_value, Mots):
+                prompt = prompt_value.text
+            elif isinstance(prompt_value, str):
+                prompt = prompt_value
+            else:
+                raise type_mismatch(
+                    "demander",
+                    VarType.MOTS.value,
+                    self._value_type_name(prompt_value),
+                    token.line,
+                    token.column,
+                )
+        if not self._match(TokenKind.RPAREN):
+            peek = self._peek()
+            raise missing_closing_paren(peek.line, peek.column)
+        return Mots(self._read_input_line(token.line, token.column, prompt))
+
+    def _parse_lire_call(self) -> int | float:
+        token = self._peek()
+        self._advance()
+        self._consume(TokenKind.LPAREN, expected_value)
+        prompt: str | None = None
+        if not self._check(TokenKind.RPAREN):
+            prompt_value = self._value_expression()
+            if isinstance(prompt_value, Mots):
+                prompt = prompt_value.text
+            elif isinstance(prompt_value, str):
+                prompt = prompt_value
+            else:
+                raise type_mismatch(
+                    "lire",
+                    VarType.MOTS.value,
+                    self._value_type_name(prompt_value),
+                    token.line,
+                    token.column,
+                )
+        if not self._match(TokenKind.RPAREN):
+            peek = self._peek()
+            raise missing_closing_paren(peek.line, peek.column)
+        raw = self._read_input_line(token.line, token.column, prompt).strip()
+        if not raw:
+            raise lire_empty_input(token.line, token.column)
+        try:
+            if "." in raw:
+                value = float(raw)
+                return int(value) if value.is_integer() else value
+            return int(raw)
+        except ValueError:
+            raise lire_invalid_number(raw, token.line, token.column) from None
+
     def _try_builtin_call(self) -> Value | Pointer | None:
         if not self._check(TokenKind.IDENTIFIER) or self._peek_next().kind != TokenKind.LPAREN:
             return None
 
         name = str(self._peek().value)
+        if name == "demander":
+            return self._parse_demander_call()
+        if name == "lire":
+            return self._parse_lire_call()
         if name == "adresse":
             return self._parse_adresse_call()
         if name == "valeur":
@@ -2111,12 +2382,33 @@ class Interpreter:
             if self._check(TokenKind.TYPE) and self._peek_next().kind == TokenKind.LBRACKET:
                 token = self._peek()
                 raise deprecated_object_literal_syntax(str(token.value), token.line, token.column)
-            if self._check(TokenKind.IDENTIFIER) or self._check(TokenKind.NUMBER) or self._check(TokenKind.TEXT):
+            if (
+                self._check(TokenKind.IDENTIFIER)
+                or self._check(TokenKind.NUMBER)
+                or self._check(TokenKind.TEXT)
+            ):
+                if self._check(TokenKind.IDENTIFIER):
+                    ident = str(self._peek().value)
+                    if ident == "demander" and self._peek_next().kind == TokenKind.LPAREN:
+                        value = self._value_expression()
+                        if var_type == VarType.MOTS and isinstance(value, Mots):
+                            return value
                 value = self._value_expression()
+                if var_type == VarType.MOTS and isinstance(value, Mots):
+                    return value
                 if not isinstance(value, FrLangObject) or value.type_name != var_type.value:
                     raise type_mismatch(name, var_type.value, self._value_type_name(value), line, column)
                 return value
             raise use_nouveau_to_create(var_type.value, line, column)
+
+        if var_type == VarType.NOMBRE:
+            if (
+                self._check(TokenKind.IDENTIFIER)
+                and str(self._peek().value) == "lire"
+                and self._peek_next().kind == TokenKind.LPAREN
+            ):
+                return self._parse_lire_call()
+            return self._numeric_expression()
 
         if var_type == VarType.LOGIQUE:
             if self._check(TokenKind.NUMBER):
@@ -2194,17 +2486,8 @@ class Interpreter:
         return self._numeric_expression()
 
     def _display_expression(self) -> Value | Pointer:
-        if self._check(TokenKind.IDENTIFIER) and str(self._peek().value) == "adresse":
-            if self._peek_next().kind == TokenKind.LPAREN:
-                return self._parse_adresse_call()
-
-        if self._check(TokenKind.IDENTIFIER):
-            if self._peek_next().kind not in (TokenKind.LPAREN, TokenKind.DOT):
-                token = self._peek()
-                variable = self._lookup_variable_entry(str(token.value), token.line, token.column)
-                if isinstance(variable.value, Pointer):
-                    self._advance()
-                    return variable.value
+        if self._starts_pointer_display_expression():
+            return self._parse_pointer_operand()
 
         if self._check(TokenKind.TEXT):
             return str(self._advance().value)
@@ -2222,6 +2505,18 @@ class Interpreter:
             return self._value_expression()
 
         return self._numeric_expression()
+
+    def _starts_pointer_display_expression(self) -> bool:
+        if self._check(TokenKind.IDENTIFIER) and str(self._peek().value) == "adresse":
+            return self._peek_next().kind == TokenKind.LPAREN
+        if self._check(TokenKind.IDENTIFIER) and self._peek_next().kind not in (
+            TokenKind.LPAREN,
+            TokenKind.DOT,
+        ):
+            token = self._peek()
+            variable = self._lookup_variable_entry(str(token.value), token.line, token.column)
+            return isinstance(variable.value, Pointer)
+        return False
 
     def _value_expression(self) -> Value:
         value = self._primary_value()
@@ -2292,6 +2587,25 @@ class Interpreter:
 
             if isinstance(value, ModuleNamespace):
                 module = value.module
+                if method_name in module.native_functions:
+                    if self._match(TokenKind.LPAREN):
+                        args = self._parse_value_argument_list()
+                        if not self._match(TokenKind.RPAREN):
+                            token = self._peek()
+                            raise missing_closing_paren(token.line, token.column)
+                        value = call_native_function(
+                            self,
+                            module.native_functions[method_name],
+                            args,
+                            method_token.line,
+                            method_token.column,
+                        )
+                        continue
+                    raise expected_method_parentheses(
+                        method_name,
+                        method_token.line,
+                        method_token.column,
+                    )
                 if method_name in module.functions:
                     if self._match(TokenKind.LPAREN):
                         args = self._parse_argument_list()
@@ -2358,7 +2672,7 @@ class Interpreter:
             return args
 
         while True:
-            args.append(self._value_expression())
+            args.append(self._parse_argument_expression())
             if not self._match(TokenKind.COMMA):
                 break
 
@@ -2460,7 +2774,7 @@ class Interpreter:
             size = array_size(var_type)
             assert element is not None
             assert size is not None
-            if not isinstance(value, list):
+            if not is_primitive_array(value):
                 raise type_mismatch(
                     name,
                     format_type_name(var_type),
@@ -2553,6 +2867,8 @@ class Interpreter:
             if is_class_type(target_type):
                 return PointerType(target_type).value
             return "pointeur"
+        if is_primitive_array(value):
+            return "liste"
         if isinstance(value, list):
             return "liste"
         if isinstance(value, FrLangObject):

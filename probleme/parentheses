@@ -1,0 +1,38 @@
+definir fonction est_valide(Mots s) {
+    soit Tas pile = nouveau Tas();
+    pourchaque i dans range(1, s.taille() + 1) {
+        soit Mots c = s.caractere(i);
+        si c.equals(nouveau Mots(")")) {
+            si pile.vide() {
+                retourne faux;
+            }
+            soit Mots ouvrante = pile.depiler();
+            si ouvrante.equals(nouveau Mots("[")) {
+                retourne faux;
+            }
+            si ouvrante.equals(nouveau Mots("(")) {
+            }
+        } sinon si c.equals(nouveau Mots("]")) {
+            si pile.vide() {
+                retourne faux;
+            }
+            soit Mots ouvrante = pile.depiler();
+            si ouvrante.equals(nouveau Mots("(")) {
+                retourne faux;
+            }
+            si ouvrante.equals(nouveau Mots("[")) {
+            }
+        } sinon {
+            pile.empiler(c);
+        }
+    }
+    si pile.vide() {
+        retourne vrai;
+    }
+    retourne faux;
+} retourne logique
+
+afficher est_valide(nouveau Mots("()[]"));
+afficher est_valide(nouveau Mots("(]"));
+afficher est_valide(nouveau Mots("([)]"));
+afficher est_valide(nouveau Mots("([])"));

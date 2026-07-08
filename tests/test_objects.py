@@ -9,6 +9,17 @@ def run(source: str) -> tuple[object | None, list[str]]:
     return interpreter.run(), interpreter.output
 
 
+def test_rangee_zero_based_element() -> None:
+    _, output = run(
+        """
+        soit Rangee notes = nouveau Rangee(10, 20, 30);
+        afficher notes.element(0);
+        afficher notes.element(2);
+        """
+    )
+    assert output == ["10", "30"]
+
+
 def test_rangee_constructor_and_methods() -> None:
     source = """
     soit Rangee notes = nouveau Rangee(10, 20);

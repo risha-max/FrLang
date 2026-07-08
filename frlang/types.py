@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import TypeAlias
 
+from frlang.memory import is_primitive_array
 from frlang.pointers import Pointer
 
 
@@ -162,7 +163,7 @@ def is_collection_var_type(var_type: VarType) -> bool:
 
 def format_pointer(pointer: Pointer) -> str:
     return (
-        f"L'adresse hexadécimale de {pointer.target_name} est {pointer.address_hex}"
+        f"L'adresse hexadécimale de {pointer.display_name} est {pointer.address_hex}"
     )
 
 
@@ -171,6 +172,9 @@ def format_value(value: StoredValue) -> str:
         return "rien"
     if isinstance(value, Pointer):
         return format_pointer(value)
+    if is_primitive_array(value):
+        inner = ", ".join(format_value(item) for item in value)
+        return f"[{inner}]"
     if isinstance(value, list):
         inner = ", ".join(format_value(item) for item in value)
         return f"[{inner}]"

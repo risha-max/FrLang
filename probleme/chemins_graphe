@@ -1,0 +1,71 @@
+definir fonction deja_vu(Rangee vu, Mots nom) {
+    soit Mots courant = nouveau Mots("");
+    pourchaque i dans range(vu.taille()) {
+        courant = vu.element(i);
+        si courant.equals(nom) {
+            retourne vrai;
+        }
+    }
+    retourne faux;
+} retourne logique
+
+definir fonction ajouter_si_nouveau(Rangee visites, Mots voisin) {
+    si deja_vu(visites, voisin) {
+        retourne faux;
+    }
+    visites.ajouter(voisin);
+    retourne vrai;
+} retourne logique
+
+definir fonction plus_court_chemin(Graphe g, Mots depart, Mots arrivee) {
+    soit nombre introuvable = 0 - 1;
+    soit Mots courant = nouveau Mots("");
+    soit Mots voisin = nouveau Mots("");
+    soit nombre d = 0;
+    soit Rangee voisins = nouveau Rangee();
+    si depart.equals(arrivee) {
+        retourne 0;
+    }
+    si g.contient_sommet(depart) {
+        si g.contient_sommet(arrivee) {
+            soit File noeuds = nouveau File();
+            soit File distances = nouveau File();
+            soit Rangee visites = nouveau Rangee();
+
+            noeuds.enfiler(depart);
+            distances.enfiler(0);
+            visites.ajouter(depart);
+
+            tantque noeuds.taille() > 0 {
+                courant = noeuds.defiler();
+                d = distances.defiler();
+                voisins = g.voisins(courant);
+                pourchaque i dans range(voisins.taille()) {
+                    voisin = nouveau Mots(voisins.element(i));
+                    si ajouter_si_nouveau(visites, voisin) {
+                        si voisin.equals(arrivee) {
+                            retourne d + 1;
+                        }
+                        noeuds.enfiler(voisin);
+                        distances.enfiler(d + 1);
+                    }
+                }
+            }
+        }
+    }
+    retourne introuvable;
+} retourne nombre
+
+soit Graphe carte = nouveau Graphe();
+carte.ajouter_sommet("Maison");
+carte.ajouter_sommet("École");
+carte.ajouter_sommet("Parc");
+carte.ajouter_sommet("Magasin");
+carte.lier("Maison", "École");
+carte.lier("Maison", "Parc");
+carte.lier("École", "Magasin");
+carte.lier("Parc", "Magasin");
+
+afficher plus_court_chemin(carte, "Maison", "Magasin");
+afficher plus_court_chemin(carte, "Maison", "Parc");
+afficher plus_court_chemin(carte, "Maison", "Maison");

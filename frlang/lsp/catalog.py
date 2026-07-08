@@ -16,6 +16,8 @@ KEYWORDS: tuple[str, ...] = (
     "tantque",
     "pourchaque",
     "dans",
+    "arreter",
+    "continuer",
     "import",
     "from",
     "as",
@@ -45,6 +47,8 @@ BUILTINS: tuple[str, ...] = (
     "adresse",
     "valeur",
     "type",
+    "demander",
+    "lire",
 )
 
 OBJECT_METHODS: dict[str, tuple[str, ...]] = {

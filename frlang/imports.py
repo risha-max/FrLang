@@ -2,12 +2,26 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import TYPE_CHECKING, Callable
 
 from frlang.classes import ClassDef
 from frlang.functions import UserFunction
 from frlang.objects import FrLangObject
 from frlang.types import Value
 from frlang.variables import Variable
+
+if TYPE_CHECKING:
+    from frlang.interpreter import Interpreter
+
+NativeHandler = Callable[["Interpreter", list[Value], int, int], Value]
+
+
+@dataclass(frozen=True, slots=True)
+class NativeFunction:
+    name: str
+    min_args: int
+    max_args: int
+    handler: NativeHandler
 
 
 @dataclass
@@ -17,6 +31,7 @@ class LoadedModule:
     functions: dict[str, UserFunction] = field(default_factory=dict)
     classes: dict[str, ClassDef] = field(default_factory=dict)
     variables: dict[str, Variable] = field(default_factory=dict)
+    native_functions: dict[str, NativeFunction] = field(default_factory=dict)
 
 
 class ModuleNamespace(FrLangObject):

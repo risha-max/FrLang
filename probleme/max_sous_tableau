@@ -1,0 +1,47 @@
+definir fonction max_sous_tableau(Rangee nums) {
+    soit nombre max_actuel = nums.element(0);
+    soit nombre max_global = nums.element(0);
+    soit nombre courant = 0;
+    soit nombre somme = 0;
+    soit nombre i = 1;
+    tantque i < nums.taille() {
+        courant = nums.element(i);
+        somme = max_actuel + courant;
+        si somme > courant {
+            max_actuel = somme;
+        } sinon {
+            max_actuel = courant;
+        }
+        si max_actuel > max_global {
+            max_global = max_actuel;
+        }
+        i = i + 1;
+    }
+    retourne max_global;
+} retourne nombre
+
+soit Rangee kadane = nouveau Rangee();
+soit nombre moins_deux = 0 - 2;
+soit nombre moins_trois = 0 - 3;
+soit nombre moins_un = 0 - 1;
+soit nombre moins_cinq = 0 - 5;
+kadane.ajouter(moins_deux);
+kadane.ajouter(1);
+kadane.ajouter(moins_trois);
+kadane.ajouter(4);
+kadane.ajouter(moins_un);
+kadane.ajouter(2);
+kadane.ajouter(1);
+kadane.ajouter(moins_cinq);
+kadane.ajouter(4);
+afficher max_sous_tableau(kadane);
+soit Rangee un = nouveau Rangee();
+un.ajouter(1);
+afficher max_sous_tableau(un);
+soit Rangee positifs = nouveau Rangee();
+positifs.ajouter(5);
+positifs.ajouter(4);
+positifs.ajouter(moins_un);
+positifs.ajouter(7);
+positifs.ajouter(8);
+afficher max_sous_tableau(positifs);

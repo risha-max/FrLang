@@ -1,0 +1,25 @@
+definir fonction two_sum(Rangee nums, nombre cible) {
+    soit Carnet vu = nouveau Carnet();
+    soit nombre i = 0;
+    soit nombre courant = 0;
+    soit nombre complement = 0;
+    tantque i < nums.taille() {
+        courant = nums.element(i);
+        complement = cible - courant;
+        si vu.contient(complement) {
+            soit Rangee resultat = nouveau Rangee();
+            resultat.ajouter(vu.element(complement));
+            resultat.ajouter(i);
+            retourne resultat;
+        }
+        vu.etiqueter(courant, i);
+        i = i + 1;
+    }
+    retourne nouveau Rangee();
+} retourne Rangee
+
+soit Rangee nums = {2, 7, 11, 15};
+afficher two_sum(nums, 9);
+
+soit Rangee petit = {3, 2, 4};
+afficher two_sum(petit, 6);

@@ -11,6 +11,77 @@ def test_si_sinon() -> None:
     assert result == 2
 
 
+def test_si_sinon_si() -> None:
+    result = Interpreter(
+        "soit nombre x = 0; "
+        "si x == 1 { x = 1; } sinon si x == 0 { x = 2; } sinon { x = 3; } "
+        "x;"
+    ).run()
+    assert result == 2
+
+
+def test_sinon_dans_pourchaque() -> None:
+    interpreter = Interpreter(
+        """
+        pourchaque i dans range(1, 4) {
+            si i mod 2 == 0 {
+                afficher i;
+            } sinon {
+                afficher 0;
+            }
+        }
+        """
+    )
+    interpreter.run()
+    assert interpreter.output == ["0", "2", "0"]
+
+
+def test_sinon_dans_tantque() -> None:
+    interpreter = Interpreter(
+        """
+        soit nombre i = 0;
+        tantque i < 3 {
+            si i == 1 {
+                afficher 10;
+            } sinon {
+                afficher i;
+            }
+            i = i + 1;
+        }
+        """
+    )
+    interpreter.run()
+    assert interpreter.output == ["0", "10", "2"]
+
+
+def test_arithmetique_dans_argument_methode() -> None:
+    interpreter = Interpreter(
+        """
+        soit File file = nouveau File();
+        soit nombre d = 1;
+        file.enfiler(d + 1);
+        afficher file.defiler();
+        """
+    )
+    interpreter.run()
+    assert interpreter.output == ["2"]
+
+
+def test_tantque_avec_taille() -> None:
+    interpreter = Interpreter(
+        """
+        soit File file = nouveau File();
+        file.enfiler(1);
+        file.enfiler(2);
+        tantque file.taille() > 0 {
+            afficher file.defiler();
+        }
+        """
+    )
+    interpreter.run()
+    assert interpreter.output == ["1", "2"]
+
+
 def test_tantque_while_loop() -> None:
     result = Interpreter(
         "soit nombre i = 0; "

@@ -19,6 +19,7 @@ from frlang.messages import (
     wrong_constructor_argument_count,
     wrong_method_argument_count,
 )
+from frlang.memory import make_primitive_array
 from frlang.types import (
     NOTHING,
     ClassType,
@@ -94,10 +95,12 @@ class Rangee(FrLangObject):
                 return self._element(args[0], line, column)
             case "premier":
                 _expect_count(name, args, 0, line, column)
-                return self._element(1, line, column)
+                return self._element(0, line, column)
             case "dernier":
                 _expect_count(name, args, 0, line, column)
-                return self._element(len(self.items), line, column)
+                if not self.items:
+                    raise index_out_of_range(self.type_name, 0, 0, line, column)
+                return self._element(len(self.items) - 1, line, column)
             case "taille":
                 _expect_count(name, args, 0, line, column)
                 return len(self.items)
@@ -115,9 +118,9 @@ class Rangee(FrLangObject):
         if isinstance(position, bool) or not isinstance(position, (int, float)):
             raise index_out_of_range(self.type_name, position, len(self.items), line, column)
         index = int(position)
-        if index < 1 or index > len(self.items):
+        if index < 0 or index >= len(self.items):
             raise index_out_of_range(self.type_name, index, len(self.items), line, column)
-        return self.items[index - 1]
+        return self.items[index]
 
 
 @dataclass
@@ -705,7 +708,9 @@ def default_value_for_type(type_spec: TypeSpec) -> Value:
         raise ValueError(f"Pas de valeur par défaut pour la classe {type_spec.name}")
     if is_array_type(type_spec):
         size = type_spec.size
-        return [NOTHING] * size
+        element = type_spec.element
+        assert element is not None
+        return make_primitive_array(element, size)
     assert isinstance(type_spec, VarType)
     if is_primitive_var_type(type_spec):
         return NOTHING

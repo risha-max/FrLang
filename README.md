@@ -63,12 +63,12 @@ afficher mot.concatener(nouveau Mots("!"));   // bonjour!
 afficher mot.equals(nouveau Mots("bonjour")); // vrai
 ```
 
-`Rangee` est une liste ordonnée. Les positions commencent à 1.
+`Rangee` est une liste ordonnée. Les positions commencent à 0.
 
 ```text
 soit Rangee notes = nouveau Rangee(10, 20);
 notes.ajouter(30);
-afficher notes.element(1);
+afficher notes.element(0);
 afficher notes.premier();
 afficher notes.dernier();
 afficher notes.taille();
@@ -170,17 +170,98 @@ FrLang expose un serveur [Language Server Protocol](https://microsoft.github.io/
 
 ```bash
 frlang-lsp                              # stdio : VS Code, Cursor (futur)
-frlang-lsp --ws --host 127.0.0.1 --port 8765   # WebSocket : site web
+frlang-lsp-ws --host 127.0.0.1 --port 8765   # WebSocket persistant : atelier web
+frlang-lsp --ws --host 127.0.0.1 --port 8765   # WebSocket pygls (1 client)
 frlang-lsp --tcp --port 8765            # TCP
 ```
 
 Le serveur fournit :
 
 - autocomplétion des mots-clés, sortes, builtins, variables, fonctions et classes
+- documentation au survol (`hover`) des mots réservés, sortes et méthodes
 - méthodes après `.` (`mot.inverser`, `notes.ajouter`, ...)
 - diagnostics en direct avec les messages d'erreur FrLang
 
-Code dans `frlang/lsp/`. Pour le site web, connecter **Monaco Editor** au serveur via WebSocket (`monaco-languageclient`). Voir issue #3.
+Code dans `frlang/lsp/`.
+
+## Atelier web
+
+Éditeur Monaco avec coloration syntaxique, LSP (WebSocket), exécution et sortie `stdout`.
+
+```bash
+pip install -e ".[web,lsp]"
+bash scripts/web-dev.sh
+```
+
+Ouvre **[http://127.0.0.1:5173](http://127.0.0.1:5173)** — le fichier `main.frlang` à la racine est chargé et sauvegardé automatiquement.
+
+Hot-reload en dev :
+
+| Service | Port | Reload |
+|---------|------|--------|
+| Frontend (Vite) | **5173** | HMR automatique |
+| API (uvicorn) | 8000 | reload `frlang/` |
+| LSP (WebSocket) | 8765 | reload `frlang/` |
+
+**Utilise le port 5173** pour coder. Le port 8000 sert l'API et le build statique (`web/dist`) — pas de HMR ni proxy LSP.
+
+Build production :
+
+```bash
+bash scripts/web-build.sh
+uvicorn frlang.web.app:app --host 0.0.0.0 --port 8000
+```
+
+Tests E2E (Playwright) :
+
+```bash
+bash scripts/web-dev.sh   # dans un terminal
+cd web && npm run test:e2e
+```
+
+## Module Math
+
+```text
+import Math;
+
+afficher Math.pi;
+afficher Math.factorielle(5);
+soit nombre de = Math.random(1, 6);
+
+from Math import random;
+afficher random(1, 6);
+```
+
+Constantes : `pi`, `e`, `phi`. Fonctions : `factorielle(n)`, `random()`, `random(max)`, `random(min, max)`.
+
+## Entrée utilisateur
+
+```text
+soit Mots nom = demander("Comment tu t'appelles ? ");
+soit nombre age = lire("Quel âge as-tu ? ");
+```
+
+## Commentaires
+
+```text
+// commentaire sur une ligne
+/* commentaire
+   sur plusieurs lignes */
+```
+
+## Boucles : arreter et continuer
+
+```text
+pourchaque i dans range(10) {
+    si i == 5 {
+        arreter;
+    }
+    si i mod 2 == 0 {
+        continuer;
+    }
+    afficher i;
+}
+```
 
 ## Vérification
 

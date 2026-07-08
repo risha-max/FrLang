@@ -1,0 +1,20 @@
+definir fonction recherche_binaire(Rangee nums, nombre cible) {
+    soit nombre introuvable = 0 - 1;
+    pourchaque i dans range(nums.taille()) {
+        si nums.element(i) == cible {
+            retourne i;
+        }
+    }
+    retourne introuvable;
+} retourne nombre
+
+soit Rangee nums = nouveau Rangee();
+soit nombre moins_un = 0 - 1;
+nums.ajouter(moins_un);
+nums.ajouter(0);
+nums.ajouter(3);
+nums.ajouter(5);
+nums.ajouter(9);
+nums.ajouter(12);
+afficher recherche_binaire(nums, 9);
+afficher recherche_binaire(nums, 2);

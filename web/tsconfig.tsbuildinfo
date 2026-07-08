@@ -1,0 +1,1 @@
+{"root":["./src/App.tsx","./src/api.ts","./src/main.tsx","./src/vite-env.d.ts","./src/lsp/client.ts","./src/lsp/completions.ts","./src/lsp/hoverDocs.ts","./src/lsp/providers.ts","./src/monaco/frlang.ts"],"version":"5.9.3"}

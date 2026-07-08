@@ -3,8 +3,9 @@ from __future__ import annotations
 import copy
 from dataclasses import dataclass
 
+from frlang.memory import is_primitive_array
 from frlang.lexer import Token
-from frlang.types import TypeSpec, Value, NOTHING
+from frlang.types import NOTHING, TypeSpec, Value
 from frlang.variables import Variable
 
 
@@ -27,6 +28,8 @@ class UserFunction:
 def copy_value(value: Value) -> Value:
     if value is NOTHING:
         return NOTHING
+    if is_primitive_array(value):
+        return value.copy()
     if isinstance(value, list):
         return list(value)
     if isinstance(value, (int, float, str, bool)):

@@ -10,6 +10,7 @@ from frlang.messages import (
     invalid_number,
     unterminated_number_literal,
     unterminated_text,
+    unterminated_block_comment,
     unknown_number_prefix,
     unknown_symbol,
     unknown_word,
@@ -171,7 +172,15 @@ class Lexer:
                 case "*":
                     yield Token(TokenKind.STAR, "*", start_line, start_column)
                 case "/":
-                    yield Token(TokenKind.SLASH, "/", start_line, start_column)
+                    if self._peek_current() == "/":
+                        self._advance()
+                        while self._index < len(self._source) and self._source[self._index] != "\n":
+                            self._advance()
+                    elif self._peek_current() == "*":
+                        self._advance()
+                        self._skip_block_comment(start_line, start_column)
+                    else:
+                        yield Token(TokenKind.SLASH, "/", start_line, start_column)
                 case "^":
                     yield Token(TokenKind.CARET, "^", start_line, start_column)
                 case "=":
@@ -366,3 +375,13 @@ class Lexer:
         else:
             self._column += 1
         return char
+
+    def _skip_block_comment(self, start_line: int, start_column: int) -> None:
+        while self._index < len(self._source):
+            char = self._source[self._index]
+            if char == "*" and self._peek_next() == "/":
+                self._advance()
+                self._advance()
+                return
+            self._advance()
+        raise unterminated_block_comment(start_line, start_column)

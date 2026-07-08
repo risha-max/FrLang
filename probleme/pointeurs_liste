@@ -1,0 +1,14 @@
+soit nombre[5] liste = [10, 20, 30, 40, 50];
+soit pointeur nombre p = adresse(liste);
+soit nombre rang = 3;
+
+valeur(p + rang - 1) = 5;
+afficher liste;
+
+definir fonction afficher_adresse(pointeur nombre ptr) {
+    afficher ptr;
+}
+
+pourchaque i dans range(0, 5) {
+    afficher_adresse(p + i);
+}

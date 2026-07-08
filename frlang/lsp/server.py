@@ -16,6 +16,7 @@ import sys
 
 from frlang.lsp.completion import CompletionSuggestion, suggest_completions
 from frlang.lsp.diagnostics import DiagnosticMessage, analyze_source
+from frlang.lsp.hover import hover_at_position
 
 
 def _require_pygls():
@@ -106,6 +107,20 @@ def build_server():
         return types.CompletionList(
             is_incomplete=False,
             items=_to_completion_items(suggestions, types),
+        )
+
+    @server.feature(types.TEXT_DOCUMENT_HOVER)
+    def hover(params: types.HoverParams):
+        document = server.workspace.get_text_document(params.text_document.uri)
+        content = hover_at_position(
+            document.source,
+            params.position.line,
+            params.position.character,
+        )
+        if content is None:
+            return None
+        return types.Hover(
+            contents=types.MarkupContent(kind=types.MarkupKind.Markdown, value=content)
         )
 
     @server.feature(types.TEXT_DOCUMENT_DID_OPEN)
