@@ -27,6 +27,8 @@ class UserFunction:
 def copy_value(value: Value) -> Value:
     if value is NOTHING:
         return NOTHING
+    if isinstance(value, list):
+        return list(value)
     if isinstance(value, (int, float, str, bool)):
         return value
     return copy.deepcopy(value)

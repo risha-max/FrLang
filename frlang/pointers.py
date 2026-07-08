@@ -10,10 +10,18 @@ class Pointer:
 
     target: Any
     target_name: str
+    offset: int = 0
 
     @property
     def address_hex(self) -> str:
         return self.target.address_hex
 
     def copy(self) -> Pointer:
-        return Pointer(target=self.target, target_name=self.target_name)
+        return Pointer(target=self.target, target_name=self.target_name, offset=self.offset)
+
+    def with_offset(self, delta: int) -> Pointer:
+        return Pointer(
+            target=self.target,
+            target_name=self.target_name,
+            offset=self.offset + delta,
+        )

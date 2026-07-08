@@ -1,0 +1,63 @@
+definir fonction doubler_valeur(nombre n) {
+    n = n + 10;
+}
+
+definir fonction doubler_ref(pointeur nombre p) {
+    valeur(p) = valeur(p) + 10;
+}
+
+definir fonction essayer_sac(Sac boite) {
+    boite.ajouter(99);
+}
+
+definir fonction remplir_sac(pointeur Sac p) {
+    valeur(p).ajouter(99);
+}
+
+definir classe Compte {
+    soit nombre solde;
+
+    constructeur(nombre montant) {
+        solde = montant;
+    }
+
+    definir fonction crediter(nombre montant) {
+        solde = solde + montant;
+    }
+
+    definir fonction lire() {
+        retourne solde;
+    } retourne nombre
+}
+
+definir fonction crediter_valeur(Compte c) {
+    c.crediter(50);
+}
+
+definir fonction crediter_ref(pointeur Compte p) {
+    valeur(p).crediter(50);
+}
+
+soit nombre x = 5;
+doubler_valeur(x);
+afficher x;
+
+soit nombre y = 5;
+doubler_ref(adresse(y));
+afficher y;
+
+soit Sac boite = nouveau Sac(1);
+essayer_sac(boite);
+afficher boite.taille();
+
+soit Sac boite2 = nouveau Sac(1);
+remplir_sac(adresse(boite2));
+afficher boite2.taille();
+
+soit Compte wallet = nouveau Compte(100);
+crediter_valeur(wallet);
+afficher wallet.lire();
+
+soit Compte wallet2 = nouveau Compte(100);
+crediter_ref(adresse(wallet2));
+afficher wallet2.lire();

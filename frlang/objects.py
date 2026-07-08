@@ -20,6 +20,7 @@ from frlang.types import (
     Value,
     VarType,
     format_value,
+    is_array_type,
     is_object_var_type,
     is_pointer_type,
     is_primitive_var_type,
@@ -425,6 +426,9 @@ def default_value_for_type(type_spec: TypeSpec) -> Value:
         return NOTHING
     if isinstance(type_spec, ClassType):
         raise ValueError(f"Pas de valeur par défaut pour la classe {type_spec.name}")
+    if is_array_type(type_spec):
+        size = type_spec.size
+        return [NOTHING] * size
     assert isinstance(type_spec, VarType)
     if is_primitive_var_type(type_spec):
         return NOTHING

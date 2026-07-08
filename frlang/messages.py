@@ -4,7 +4,7 @@ from frlang.errors import LexerError, ParseError
 
 _OPERATORS_HINT = "Tu peux utiliser : +  -  *  /  mod  ^  et des parenthèses ( )"
 _STATEMENT_HINT = "N'oublie pas le ; à la fin. Exemple : soit nombre x = 5;"
-_TYPES_HINT = "Les sortes possibles : nombre, logique, Mots, Rangee, Sac, Carnet, Tas, File."
+_TYPES_HINT = "Les sortes possibles : nombre, logique, nombre[10], logique[5], Mots, Rangee, Sac, Carnet, Tas, File."
 _OBJECT_TYPE_RENAMES = {
     "rangée": "Rangee",
     "sac": "Sac",
@@ -679,7 +679,97 @@ def pointer_operation_not_allowed(line: int, column: int) -> ParseError:
         "On ne peut pas faire d'opération sur un pointeur.",
         line=line,
         column=column,
-        hint="Utilise seulement valeur() pour lire ou modifier la variable pointée.",
+        hint="Pour un tableau primitif, utilise pointeur + 1 puis valeur(). Sinon, utilise seulement valeur().",
+    )
+
+
+def pointer_arithmetic_requires_array(line: int, column: int) -> ParseError:
+    return ParseError(
+        "L'arithmétique de pointeur ne fonctionne que sur un tableau primitif.",
+        line=line,
+        column=column,
+        hint="Exemple : soit pointeur nombre p = adresse(notes); valeur(p + 1);",
+    )
+
+
+def pointer_offset_requires_integer(line: int, column: int) -> ParseError:
+    return ParseError(
+        "Le décalage d'un pointeur doit être un entier positif.",
+        line=line,
+        column=column,
+        hint="Exemple : valeur(p + 1);",
+    )
+
+
+def pointer_cannot_target_array_type(line: int, column: int) -> ParseError:
+    return ParseError(
+        "Un pointeur ne peut pas viser directement un tableau primitif.",
+        line=line,
+        column=column,
+        hint="Utilise adresse(notes) pour obtenir un pointeur vers le premier élément.",
+    )
+
+
+def array_type_requires_primitive(element_type: str, line: int, column: int) -> ParseError:
+    return ParseError(
+        f"Seuls nombre et logique peuvent former un tableau primitif, pas « {element_type} ».",
+        line=line,
+        column=column,
+        hint="Exemple : soit nombre[10] notes = [10, 20, 30];",
+    )
+
+
+def missing_closing_bracket(line: int, column: int) -> ParseError:
+    return ParseError(
+        "Il manque un crochet fermant « ] ».",
+        line=line,
+        column=column,
+        hint="Exemple : soit nombre[10] notes = [10, 20, 30];",
+    )
+
+
+def array_index_out_of_bounds(index: int, size: int, line: int, column: int) -> ParseError:
+    return ParseError(
+        f"L'indice {index} est hors limites pour un tableau de taille {size}.",
+        line=line,
+        column=column,
+        hint="Les indices commencent à 0 pour le premier élément.",
+    )
+
+
+def array_size_required(line: int, column: int) -> ParseError:
+    return ParseError(
+        "Un tableau primitif a besoin d'une taille entre les crochets.",
+        line=line,
+        column=column,
+        hint="Exemple : soit nombre[10] notes = [1, 2, 3];",
+    )
+
+
+def array_size_must_be_constant(line: int, column: int) -> ParseError:
+    return ParseError(
+        "La taille d'un tableau doit être un nombre connu à l'avance.",
+        line=line,
+        column=column,
+        hint="Écris un nombre entier positif, par exemple : soit nombre[10] notes = [];",
+    )
+
+
+def array_size_invalid(size: int, line: int, column: int) -> ParseError:
+    return ParseError(
+        f"La taille d'un tableau doit être un entier positif, pas {size}.",
+        line=line,
+        column=column,
+        hint="Exemple : soit nombre[10] notes = [1, 2];",
+    )
+
+
+def array_too_many_elements(got: int, size: int, line: int, column: int) -> ParseError:
+    return ParseError(
+        f"Tu as donné {got} valeurs, mais le tableau ne peut en contenir que {size}.",
+        line=line,
+        column=column,
+        hint="Enlève des valeurs ou augmente la taille entre les crochets.",
     )
 
 

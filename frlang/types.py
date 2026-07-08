@@ -32,10 +32,12 @@ class VarType(Enum):
 
 @dataclass(frozen=True, slots=True)
 class PointerType:
-    target: VarType
+    target: VarType | ClassType
 
     @property
     def value(self) -> str:
+        if isinstance(self.target, ClassType):
+            return f"pointeur {self.target.name}"
         return f"pointeur {self.target.value}"
 
 
@@ -48,9 +50,19 @@ class ClassType:
         return self.name
 
 
-TypeSpec: TypeAlias = VarType | PointerType | ClassType
-StoredValue: TypeAlias = int | float | str | bool | object | Pointer | NothingType
-Value: TypeAlias = int | float | str | bool | object | NothingType
+@dataclass(frozen=True, slots=True)
+class ArrayType:
+    element: VarType
+    size: int
+
+    @property
+    def value(self) -> str:
+        return f"{self.element.value}[{self.size}]"
+
+
+TypeSpec: TypeAlias = VarType | PointerType | ClassType | ArrayType
+StoredValue: TypeAlias = int | float | str | bool | list | object | Pointer | NothingType
+Value: TypeAlias = int | float | str | bool | list | object | NothingType
 
 
 def parse_type_name(name: str) -> VarType | None:
@@ -79,9 +91,25 @@ def legacy_object_type_name(name: str) -> VarType | None:
 
 
 def format_type_name(type_spec: TypeSpec) -> str:
-    if isinstance(type_spec, (PointerType, ClassType)):
+    if isinstance(type_spec, (PointerType, ClassType, ArrayType)):
         return type_spec.value
     return type_spec.value
+
+
+def is_array_type(type_spec: TypeSpec) -> bool:
+    return isinstance(type_spec, ArrayType)
+
+
+def array_element_type(type_spec: TypeSpec) -> VarType | None:
+    if isinstance(type_spec, ArrayType):
+        return type_spec.element
+    return None
+
+
+def array_size(type_spec: TypeSpec) -> int | None:
+    if isinstance(type_spec, ArrayType):
+        return type_spec.size
+    return None
 
 
 def is_class_type(type_spec: TypeSpec) -> bool:
@@ -92,7 +120,7 @@ def is_pointer_type(type_spec: TypeSpec) -> bool:
     return isinstance(type_spec, PointerType)
 
 
-def pointer_target_type(type_spec: TypeSpec) -> VarType | None:
+def pointer_target_type(type_spec: TypeSpec) -> VarType | ClassType | None:
     if isinstance(type_spec, PointerType):
         return type_spec.target
     return None
@@ -134,6 +162,9 @@ def format_value(value: StoredValue) -> str:
         return "rien"
     if isinstance(value, Pointer):
         return format_pointer(value)
+    if isinstance(value, list):
+        inner = ", ".join(format_value(item) for item in value)
+        return f"[{inner}]"
     if hasattr(value, "describe") and callable(value.describe):
         return str(value.describe())
     if isinstance(value, bool):

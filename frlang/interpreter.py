@@ -62,6 +62,16 @@ from frlang.messages import (
     pointer_operation_not_allowed,
     pointer_requires_valeur,
     pointer_type_mismatch,
+    pointer_arithmetic_requires_array,
+    pointer_offset_requires_integer,
+    pointer_cannot_target_array_type,
+    array_type_requires_primitive,
+    missing_closing_bracket,
+    array_index_out_of_bounds,
+    array_size_required,
+    array_size_must_be_constant,
+    array_size_invalid,
+    array_too_many_elements,
     return_in_void_function,
     return_outside_function,
     rien_not_allowed_for_type,
@@ -111,13 +121,17 @@ from frlang.objects import (
 )
 from frlang.pointers import Pointer
 from frlang.types import (
+    ArrayType,
     ClassType,
     PointerType,
     TypeSpec,
     Value,
     VarType,
+    array_element_type,
+    array_size,
     format_type_name,
     format_value,
+    is_array_type,
     is_capitalized_type_name,
     is_class_type,
     is_nothing,
@@ -568,12 +582,16 @@ class Interpreter:
                     scope[param.name] = Variable(param.var_type, arg.copy())
                 else:
                     assert not isinstance(arg, Pointer)
-                    value = self._coerce_argument(param.var_type, arg)
-                    value = (
-                        copy_value(value)
-                        if isinstance(param.var_type, VarType) and is_object_var_type(param.var_type)
-                        else value
-                    )
+                    if is_array_type(param.var_type):
+                        assert isinstance(arg, list)
+                        value = list(arg)
+                    elif isinstance(param.var_type, VarType):
+                        value = self._coerce_argument(param.var_type, arg)
+                        value = copy_value(value) if is_object_var_type(param.var_type) else value
+                    elif is_class_type(param.var_type):
+                        value = copy_value(arg)
+                    else:
+                        value = arg
                     self._check_value_type(param.name, param.var_type, value, line, column)
                     scope[param.name] = Variable(param.var_type, value)
             while self._position < len(self._tokens):
@@ -740,12 +758,20 @@ class Interpreter:
                     scope[param.name] = Variable(param.var_type, arg.copy())
                 else:
                     assert not isinstance(arg, Pointer)
-                    value = self._coerce_argument(param.var_type, arg)
-                    value = (
-                        copy_value(value)
-                        if isinstance(param.var_type, VarType) and is_object_var_type(param.var_type)
-                        else value
-                    )
+                    if is_array_type(param.var_type):
+                        assert isinstance(arg, list)
+                        value = list(arg)
+                    elif isinstance(param.var_type, VarType):
+                        value = self._coerce_argument(param.var_type, arg)
+                        value = (
+                            copy_value(value)
+                            if is_object_var_type(param.var_type)
+                            else value
+                        )
+                    elif is_class_type(param.var_type):
+                        value = copy_value(arg)
+                    else:
+                        value = arg
                     self._check_value_type(param.name, param.var_type, value, line, column)
                     scope[param.name] = Variable(param.var_type, value)
             return self._execute_method_body(method)
@@ -898,9 +924,16 @@ class Interpreter:
                 scope[param.name] = Variable(param.var_type, arg.copy())
             else:
                 assert not isinstance(arg, Pointer)
-                assert isinstance(param.var_type, VarType)
-                value = self._coerce_argument(param.var_type, arg)
-                value = copy_value(value) if is_object_var_type(param.var_type) else value
+                if is_array_type(param.var_type):
+                    assert isinstance(arg, list)
+                    value = list(arg)
+                elif isinstance(param.var_type, VarType):
+                    value = self._coerce_argument(param.var_type, arg)
+                    value = copy_value(value) if is_object_var_type(param.var_type) else value
+                elif is_class_type(param.var_type):
+                    value = copy_value(arg)
+                else:
+                    value = arg
                 self._check_value_type(param.name, param.var_type, value, line, column)
                 scope[param.name] = Variable(param.var_type, value)
 
@@ -1527,6 +1560,24 @@ class Interpreter:
             raise missing_closing_paren(peek.line, peek.column)
 
         target_type = pointer.target.var_type
+        if is_array_type(target_type):
+            element = array_element_type(target_type)
+            assert element is not None
+            self._consume(TokenKind.EQUAL, expected_equal)
+            value = self._expression_for_type(element, "valeur", token.line, token.column)
+            self._consume_semicolon()
+            self._check_value_type("valeur", element, value, token.line, token.column)
+            self._write_through_pointer(pointer, value, token.line, token.column)
+            return
+
+        if is_class_type(target_type):
+            self._consume(TokenKind.EQUAL, expected_equal)
+            value = self._expression_for_type(target_type, "valeur", token.line, token.column)
+            self._consume_semicolon()
+            self._check_value_type("valeur", target_type, value, token.line, token.column)
+            pointer.target.value = value
+            return
+
         if is_pointer_type(target_type):
             raise pointer_type_mismatch(
                 "valeur",
@@ -1541,11 +1592,25 @@ class Interpreter:
         value = self._expression_for_type(target_type, "valeur", token.line, token.column)
         self._consume_semicolon()
         self._check_value_type("valeur", target_type, value, token.line, token.column)
-        pointer.target.value = value
+        self._write_through_pointer(pointer, value, token.line, token.column)
 
     def _expression_for_type(self, var_type: TypeSpec, name: str, line: int, column: int) -> Value | Pointer:
         if is_pointer_type(var_type):
             return self._pointer_expression(var_type, name, line, column)
+        if is_array_type(var_type):
+            if self._check(TokenKind.LBRACKET):
+                return self._parse_array_literal(var_type, name, line, column)
+            if self._check(TokenKind.IDENTIFIER) and self._peek_next().kind not in (
+                TokenKind.LPAREN,
+                TokenKind.DOT,
+            ):
+                token = self._advance()
+                variable = self._lookup_variable_entry(str(token.value), token.line, token.column)
+                return variable.value
+            token = self._peek()
+            raise type_mismatch(name, format_type_name(var_type), str(token.value), line, column)
+        if is_class_type(var_type):
+            return self._value_expression()
         assert isinstance(var_type, VarType)
         if var_type == VarType.NOMBRE:
             return self._numeric_expression()
@@ -1612,21 +1677,128 @@ class Interpreter:
 
         type_name = str(self._advance().value)
         if type_name == "pointeur":
-            inner_token = self._peek()
-            if inner_token.kind != TokenKind.TYPE:
-                raise expected_type_after_pointeur(inner_token.line, inner_token.column)
-            inner_name = str(self._advance().value)
-            if inner_name == "pointeur":
-                raise nested_pointer_not_allowed(inner_token.line, inner_token.column)
-            inner_type = parse_type_name(inner_name)
-            if inner_type is None:
-                raise expected_type_after_pointeur(inner_token.line, inner_token.column)
-            return PointerType(inner_type)
+            return PointerType(self._parse_pointer_target_type())
 
         var_type = parse_type_name(type_name)
         if var_type is None:
             raise expected_type(token.line, token.column)
-        return var_type
+        return self._parse_array_suffix(var_type)
+
+    def _parse_pointer_target_type(self) -> VarType | ClassType:
+        token = self._peek()
+        if token.kind == TokenKind.TYPE:
+            inner_name = str(self._advance().value)
+            if inner_name == "pointeur":
+                raise nested_pointer_not_allowed(token.line, token.column)
+            inner_type = parse_type_name(inner_name)
+            if inner_type is None:
+                raise expected_type_after_pointeur(token.line, token.column)
+            if self._match(TokenKind.LBRACKET):
+                if self._check(TokenKind.RBRACKET):
+                    raise pointer_cannot_target_array_type(token.line, token.column)
+                self._parse_compile_time_array_size()
+                if not self._match(TokenKind.RBRACKET):
+                    peek = self._peek()
+                    raise missing_closing_bracket(peek.line, peek.column)
+                raise pointer_cannot_target_array_type(token.line, token.column)
+            return inner_type
+        if token.kind == TokenKind.IDENTIFIER:
+            name = str(token.value)
+            if name in self._classes or name == self._current_class_name:
+                self._advance()
+                return ClassType(name)
+            if is_capitalized_type_name(name):
+                raise undefined_class(name, token.line, token.column)
+        raise expected_type_after_pointeur(token.line, token.column)
+
+    def _parse_array_suffix(self, var_type: VarType) -> TypeSpec:
+        if not self._match(TokenKind.LBRACKET):
+            return var_type
+        bracket_token = self._previous()
+        if self._check(TokenKind.RBRACKET):
+            raise array_size_required(bracket_token.line, bracket_token.column)
+        size = self._parse_compile_time_array_size()
+        if not self._match(TokenKind.RBRACKET):
+            peek = self._peek()
+            raise missing_closing_bracket(peek.line, peek.column)
+        if not is_primitive_var_type(var_type):
+            raise array_type_requires_primitive(var_type.value, bracket_token.line, bracket_token.column)
+        return ArrayType(var_type, size)
+
+    def _parse_compile_time_array_size(self) -> int:
+        token = self._peek()
+        if token.kind != TokenKind.NUMBER:
+            raise array_size_must_be_constant(token.line, token.column)
+        raw = self._advance().value
+        if isinstance(raw, bool) or not isinstance(raw, (int, float)):
+            raise array_size_must_be_constant(token.line, token.column)
+        if isinstance(raw, float) and not raw.is_integer():
+            raise array_size_must_be_constant(token.line, token.column)
+        size = int(raw)
+        if size <= 0:
+            raise array_size_invalid(size, token.line, token.column)
+        return size
+
+    def _build_array_value(
+        self,
+        array_type: ArrayType,
+        items: list[Value],
+        line: int,
+        column: int,
+    ) -> list[Value]:
+        if len(items) > array_type.size:
+            raise array_too_many_elements(len(items), array_type.size, line, column)
+        padded = list(items)
+        while len(padded) < array_type.size:
+            padded.append(NOTHING)
+        return padded
+
+    def _parse_array_literal(self, array_type: ArrayType, name: str, line: int, column: int) -> list[Value]:
+        self._consume(TokenKind.LBRACKET, missing_closing_bracket)
+        items: list[Value] = []
+        if not self._check(TokenKind.RBRACKET):
+            while True:
+                if array_type.element == VarType.NOMBRE:
+                    items.append(self._numeric_expression())
+                elif array_type.element == VarType.LOGIQUE:
+                    items.append(self._logique_expression(name, line, column))
+                else:
+                    raise array_type_requires_primitive(
+                        array_type.element.value,
+                        line,
+                        column,
+                    )
+                if not self._match(TokenKind.COMMA):
+                    break
+        if not self._match(TokenKind.RBRACKET):
+            peek = self._peek()
+            raise missing_closing_bracket(peek.line, peek.column)
+        return self._build_array_value(array_type, items, line, column)
+
+    def _read_through_pointer(self, pointer: Pointer, line: int, column: int) -> Value:
+        if is_array_type(pointer.target.var_type):
+            items = pointer.target.value
+            capacity = array_size(pointer.target.var_type)
+            assert capacity is not None
+            if not isinstance(items, list):
+                raise array_index_out_of_bounds(pointer.offset, capacity, line, column)
+            if pointer.offset < 0 or pointer.offset >= capacity:
+                raise array_index_out_of_bounds(pointer.offset, capacity, line, column)
+            return items[pointer.offset]
+        return pointer.target.value
+
+    def _write_through_pointer(self, pointer: Pointer, value: Value, line: int, column: int) -> None:
+        if is_array_type(pointer.target.var_type):
+            items = pointer.target.value
+            capacity = array_size(pointer.target.var_type)
+            assert capacity is not None
+            if not isinstance(items, list):
+                raise array_index_out_of_bounds(pointer.offset, capacity, line, column)
+            if pointer.offset < 0 or pointer.offset >= capacity:
+                raise array_index_out_of_bounds(pointer.offset, capacity, line, column)
+            items[pointer.offset] = value
+            return
+        pointer.target.value = value
 
     def _parse_adresse_call(self) -> Pointer:
         token = self._peek()
@@ -1644,13 +1816,14 @@ class Interpreter:
         return Pointer(target=variable, target_name=str(name_token.value))
 
     def _parse_valeur_call(self) -> Value:
+        token = self._peek()
         self._advance()
         self._consume(TokenKind.LPAREN, expected_value)
         pointer = self._parse_pointer_operand()
         if not self._match(TokenKind.RPAREN):
             peek = self._peek()
             raise missing_closing_paren(peek.line, peek.column)
-        return pointer.target.value
+        return self._read_through_pointer(pointer, token.line, token.column)
 
     def _parse_type_call(self) -> str:
         start = self._peek()
@@ -1684,6 +1857,16 @@ class Interpreter:
         return self._value_type_name(value)
 
     def _parse_pointer_operand(self) -> Pointer:
+        pointer = self._parse_pointer_primary()
+        while self._match(TokenKind.PLUS):
+            operator = self._previous()
+            offset = self._parse_pointer_offset()
+            if not is_array_type(pointer.target.var_type):
+                raise pointer_arithmetic_requires_array(operator.line, operator.column)
+            pointer = pointer.with_offset(offset)
+        return pointer
+
+    def _parse_pointer_primary(self) -> Pointer:
         if self._check(TokenKind.IDENTIFIER) and str(self._peek().value) == "adresse":
             return self._parse_adresse_call()
 
@@ -1695,6 +1878,13 @@ class Interpreter:
         if not isinstance(variable.value, Pointer):
             raise not_a_pointer(name, name_token.line, name_token.column)
         return variable.value
+
+    def _parse_pointer_offset(self) -> int:
+        value = self._numeric_primary()
+        if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+            token = self._previous()
+            raise pointer_offset_requires_integer(token.line, token.column)
+        return value
 
     def _pointer_expression(
         self,
@@ -1726,20 +1916,48 @@ class Interpreter:
     def _check_pointer_target_type(
         self,
         name: str,
-        expected_target: VarType,
+        expected_target: VarType | ClassType,
         pointer: Pointer,
         line: int,
         column: int,
     ) -> None:
         target_type = pointer.target.var_type
+        if is_array_type(target_type):
+            element = array_element_type(target_type)
+            assert element is not None
+            if not isinstance(expected_target, VarType) or element != expected_target:
+                expected_name = (
+                    expected_target.value
+                    if isinstance(expected_target, VarType)
+                    else expected_target.name
+                )
+                raise pointer_type_mismatch(
+                    name,
+                    expected_name,
+                    target_type.value,
+                    line,
+                    column,
+                )
+            return
         if is_pointer_type(target_type):
             raise pointer_type_mismatch(
                 name,
-                expected_target.value,
+                format_type_name(expected_target),
                 format_type_name(target_type),
                 line,
                 column,
             )
+        if is_class_type(expected_target):
+            if not is_class_type(target_type) or target_type.name != expected_target.name:
+                raise pointer_type_mismatch(
+                    name,
+                    expected_target.name,
+                    format_type_name(target_type),
+                    line,
+                    column,
+                )
+            return
+        assert isinstance(expected_target, VarType)
         assert isinstance(target_type, VarType)
         if target_type != expected_target:
             raise pointer_type_mismatch(name, expected_target.value, target_type.value, line, column)
@@ -1789,6 +2007,25 @@ class Interpreter:
                 raise use_nouveau_to_create(var_type.name, token.line, token.column)
             token = self._peek()
             raise use_nouveau_to_create(var_type.name, token.line, token.column)
+
+        if is_array_type(var_type):
+            if self._check(TokenKind.LBRACKET):
+                return self._parse_array_literal(var_type, name, line, column)
+            if self._check(TokenKind.IDENTIFIER) and self._peek_next().kind not in (
+                TokenKind.LPAREN,
+                TokenKind.DOT,
+            ):
+                token = self._advance()
+                variable = self._lookup_variable_entry(str(token.value), token.line, token.column)
+                return variable.value
+            token = self._peek()
+            raise type_mismatch(
+                name,
+                format_type_name(var_type),
+                str(token.value),
+                token.line,
+                token.column,
+            )
 
         assert isinstance(var_type, VarType)
         if is_object_var_type(var_type):
@@ -2146,6 +2383,33 @@ class Interpreter:
         if isinstance(value, Pointer):
             raise type_mismatch(name, format_type_name(var_type), "pointeur", line, column)
 
+        if is_array_type(var_type):
+            element = array_element_type(var_type)
+            size = array_size(var_type)
+            assert element is not None
+            assert size is not None
+            if not isinstance(value, list):
+                raise type_mismatch(
+                    name,
+                    format_type_name(var_type),
+                    self._value_type_name(value),
+                    line,
+                    column,
+                )
+            if len(value) != size:
+                raise type_mismatch(
+                    name,
+                    format_type_name(var_type),
+                    f"liste de taille {len(value)}",
+                    line,
+                    column,
+                )
+            for item in value:
+                if is_nothing(item):
+                    continue
+                self._check_value_type(name, element, item, line, column)
+            return
+
         if is_class_type(var_type):
             if var_type.name == ORIGINAL_CLASS_NAME and isinstance(value, UserInstance):
                 return
@@ -2208,9 +2472,17 @@ class Interpreter:
             return "rien"
         if isinstance(value, Pointer):
             target_type = value.target.var_type
+            if is_array_type(target_type):
+                element = array_element_type(target_type)
+                assert element is not None
+                return PointerType(element).value
             if isinstance(target_type, VarType):
                 return PointerType(target_type).value
+            if is_class_type(target_type):
+                return PointerType(target_type).value
             return "pointeur"
+        if isinstance(value, list):
+            return "liste"
         if isinstance(value, FrLangObject):
             return value.type_name
         if isinstance(value, bool):
