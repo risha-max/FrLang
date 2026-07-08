@@ -10,6 +10,8 @@ from frlang.messages import (
     empty_collection,
     fichier_introuvable,
     fichier_ligne_hors_limites,
+    graphe_nom_invalide,
+    graphe_sommet_inconnu,
     index_out_of_range,
     mots_not_a_number,
     sac_no_order_access,
@@ -308,6 +310,132 @@ class File(FrLangObject):
 
 
 @dataclass
+class Arbre(FrLangObject):
+    value: Value = NOTHING
+    children: list[Arbre] = field(default_factory=list)
+
+    @property
+    def type_name(self) -> str:
+        return "Arbre"
+
+    def describe(self) -> str:
+        return f"Arbre({format_value(self.value)}, {len(self.children)} enfants)"
+
+    def _subtree_size(self) -> int:
+        return 1 + sum(child._subtree_size() for child in self.children)
+
+    def call_method(
+        self,
+        name: str,
+        args: list[Value],
+        line: int,
+        column: int,
+    ) -> Value | None:
+        match name:
+            case "valeur":
+                _expect_count(name, args, 0, line, column)
+                return self.value
+            case "ajouter_enfant":
+                _expect_count(name, args, 1, line, column)
+                child = Arbre(value=args[0])
+                self.children.append(child)
+                return child
+            case "enfant":
+                _expect_count(name, args, 1, line, column)
+                return self._enfant(args[0], line, column)
+            case "nombre_enfants":
+                _expect_count(name, args, 0, line, column)
+                return len(self.children)
+            case "taille":
+                _expect_count(name, args, 0, line, column)
+                return self._subtree_size()
+            case "feuille":
+                _expect_count(name, args, 0, line, column)
+                return len(self.children) == 0
+            case _:
+                raise unknown_object_method(self.type_name, name, line, column)
+
+    def _enfant(self, position: Value, line: int, column: int) -> Arbre:
+        if isinstance(position, bool) or not isinstance(position, (int, float)):
+            raise index_out_of_range(self.type_name, position, len(self.children), line, column)
+        index = int(position)
+        if index < 1 or index > len(self.children):
+            raise index_out_of_range(self.type_name, index, len(self.children), line, column)
+        return self.children[index - 1]
+
+
+@dataclass
+class Graphe(FrLangObject):
+    adjacency: dict[str, list[str]] = field(default_factory=dict)
+
+    @property
+    def type_name(self) -> str:
+        return "Graphe"
+
+    def describe(self) -> str:
+        return f"Graphe({len(self.adjacency)} sommets)"
+
+    def _label(self, value: Value, line: int, column: int) -> str:
+        if isinstance(value, Mots):
+            return value.text
+        if isinstance(value, str):
+            return value
+        if isinstance(value, bool):
+            return "vrai" if value else "faux"
+        if isinstance(value, (int, float)):
+            if isinstance(value, float) and value.is_integer():
+                return str(int(value))
+            return str(value)
+        raise graphe_nom_invalide(format_value(value), line, column)
+
+    def _ensure_vertex(self, label: str) -> None:
+        if label not in self.adjacency:
+            self.adjacency[label] = []
+
+    def call_method(
+        self,
+        name: str,
+        args: list[Value],
+        line: int,
+        column: int,
+    ) -> Value | None:
+        match name:
+            case "ajouter_sommet":
+                _expect_count(name, args, 1, line, column)
+                self._ensure_vertex(self._label(args[0], line, column))
+                return None
+            case "lier":
+                _expect_count(name, args, 2, line, column)
+                left = self._label(args[0], line, column)
+                right = self._label(args[1], line, column)
+                self._ensure_vertex(left)
+                self._ensure_vertex(right)
+                if right not in self.adjacency[left]:
+                    self.adjacency[left].append(right)
+                if left not in self.adjacency[right]:
+                    self.adjacency[right].append(left)
+                return None
+            case "voisins":
+                _expect_count(name, args, 1, line, column)
+                label = self._label(args[0], line, column)
+                if label not in self.adjacency:
+                    raise graphe_sommet_inconnu(label, line, column)
+                return Rangee(items=list(self.adjacency[label]))
+            case "contient_sommet":
+                _expect_count(name, args, 1, line, column)
+                label = self._label(args[0], line, column)
+                return label in self.adjacency
+            case "nombre_sommets":
+                _expect_count(name, args, 0, line, column)
+                return len(self.adjacency)
+            case "nombre_aretes":
+                _expect_count(name, args, 0, line, column)
+                return sum(len(neighbors) for neighbors in self.adjacency.values()) // 2
+            case _:
+                raise unknown_object_method(self.type_name, name, line, column)
+
+
+@dataclass
 class Mots(FrLangObject):
     text: str = ""
 
@@ -460,6 +588,8 @@ OBJECT_TYPES: dict[str, Callable[[], FrLangObject]] = {
     "Tas": Tas,
     "File": File,
     "Fichier": Fichier,
+    "Arbre": Arbre,
+    "Graphe": Graphe,
 }
 
 
@@ -517,6 +647,35 @@ def fill_mots_object(
     if isinstance(arg, Mots):
         return Mots(arg.text)
     raise wrong_constructor_argument_count(obj.type_name, 1, len(args), line, column)
+
+
+def fill_arbre_object(
+    obj: FrLangObject,
+    args: list[Value],
+    line: int,
+    column: int,
+) -> Arbre:
+    if not isinstance(obj, Arbre):
+        raise wrong_constructor_argument_count(obj.type_name, 0, len(args), line, column)
+    if len(args) > 1:
+        raise wrong_constructor_argument_count(obj.type_name, 1, len(args), line, column)
+    if not args:
+        return obj
+    obj.value = args[0]
+    return obj
+
+
+def fill_graphe_object(
+    obj: FrLangObject,
+    args: list[Value],
+    line: int,
+    column: int,
+) -> Graphe:
+    if not isinstance(obj, Graphe):
+        raise wrong_constructor_argument_count(obj.type_name, 0, len(args), line, column)
+    if args:
+        raise wrong_constructor_argument_count(obj.type_name, 0, len(args), line, column)
+    return obj
 
 
 def fill_fichier_object(

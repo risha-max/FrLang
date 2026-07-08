@@ -823,6 +823,24 @@ def fichier_ligne_hors_limites(index: object, size: int, line: int, column: int)
     )
 
 
+def graphe_sommet_inconnu(name: str, line: int, column: int) -> ParseError:
+    return ParseError(
+        f"Le sommet « {name} » n'est pas dans le graphe.",
+        line=line,
+        column=column,
+        hint="Ajoute-le d'abord avec ajouter_sommet().",
+    )
+
+
+def graphe_nom_invalide(value: str, line: int, column: int) -> ParseError:
+    return ParseError(
+        f"« {value} » ne peut pas servir de nom de sommet.",
+        line=line,
+        column=column,
+        hint="Utilise un texte ou un nombre comme nom.",
+    )
+
+
 def mots_not_a_number(text: str, line: int, column: int) -> ParseError:
     return ParseError(
         f"« {text} » n'est pas un nombre.",

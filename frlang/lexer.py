@@ -101,6 +101,8 @@ _KEYWORDS.update(
         "Tas": TokenKind.TYPE,
         "File": TokenKind.TYPE,
         "Fichier": TokenKind.TYPE,
+        "Arbre": TokenKind.TYPE,
+        "Graphe": TokenKind.TYPE,
         "vrai": TokenKind.VRAI,
         "faux": TokenKind.FAUX,
         "rien": TokenKind.RIEN,

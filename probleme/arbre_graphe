@@ -1,0 +1,21 @@
+// Arbre généalogique : parent → enfants
+soit Arbre famille = nouveau Arbre("Aïeul");
+soit Arbre pere = famille.ajouter_enfant("Père");
+soit Arbre mere = famille.ajouter_enfant("Mère");
+pere.ajouter_enfant("Alice");
+mere.ajouter_enfant("Bob");
+
+afficher "Famille :";
+afficher famille;
+afficher famille.taille();
+
+// Graphe : lieux reliés par des chemins
+soit Graphe carte = nouveau Graphe();
+carte.ajouter_sommet("Maison");
+carte.ajouter_sommet("École");
+carte.ajouter_sommet("Parc");
+carte.lier("Maison", "École");
+carte.lier("Maison", "Parc");
+
+afficher "Depuis la maison :";
+afficher carte.voisins("Maison");

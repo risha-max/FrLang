@@ -14,8 +14,8 @@ File (Queue)
 File d’attente
 Premier entré, premier sorti
 Arbre
-Arbre généalogique / Famille
+Arbre généalogique / Famille — type `Arbre` (parent → enfants)
 Parent → enfants
 Graphe
-Carte / Réseau de rues
+Carte / Réseau de rues — type `Graphe` (sommets + lier)
 Lieux reliés par des chemins

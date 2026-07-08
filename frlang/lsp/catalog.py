@@ -36,6 +36,8 @@ TYPES: tuple[str, ...] = (
     "Tas",
     "File",
     "Fichier",
+    "Arbre",
+    "Graphe",
 )
 
 BUILTINS: tuple[str, ...] = (
@@ -53,6 +55,8 @@ OBJECT_METHODS: dict[str, tuple[str, ...]] = {
     "Tas": ("empiler", "depiler", "taille", "vide"),
     "File": ("enfiler", "defiler", "taille", "vide"),
     "Fichier": ("ecrire", "lire", "lire_ligne", "fermer", "existe", "chemin", "taille"),
+    "Arbre": ("valeur", "ajouter_enfant", "enfant", "nombre_enfants", "taille", "feuille"),
+    "Graphe": ("ajouter_sommet", "lier", "voisins", "contient_sommet", "nombre_sommets", "nombre_aretes"),
     "Original": ("afficher", "equals"),
 }
 

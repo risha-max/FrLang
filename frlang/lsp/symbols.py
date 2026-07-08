@@ -17,6 +17,8 @@ _BUILTIN_TYPES = {
     "Tas",
     "File",
     "Fichier",
+    "Arbre",
+    "Graphe",
 }
 
 

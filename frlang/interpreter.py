@@ -118,8 +118,10 @@ from frlang.objects import (
     build_range,
     create_object,
     default_value_for_type,
+    fill_arbre_object,
     fill_carnet_object,
     fill_fichier_object,
+    fill_graphe_object,
     fill_list_object,
     fill_mots_object,
     is_collection_object,
@@ -642,6 +644,10 @@ class Interpreter:
                     else Path.cwd()
                 )
                 return fichier
+            if type_name == "Arbre":
+                return fill_arbre_object(obj, args, type_token.line, type_token.column)
+            if type_name == "Graphe":
+                return fill_graphe_object(obj, args, type_token.line, type_token.column)
             return fill_list_object(obj, args, type_token.line, type_token.column)
 
         if type_name in self._classes:

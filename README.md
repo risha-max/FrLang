@@ -121,6 +121,32 @@ afficher attente.vide();
 afficher attente.taille();
 ```
 
+`Arbre` modélise une structure parent → enfants (comme un arbre généalogique).
+
+```text
+soit Arbre famille = nouveau Arbre("Aïeul");
+soit Arbre pere = famille.ajouter_enfant("Père");
+pere.ajouter_enfant("Alice");
+afficher famille.valeur();
+afficher famille.nombre_enfants();
+afficher famille.taille();
+afficher famille.enfant(1).valeur();
+afficher famille.feuille();
+```
+
+`Graphe` relie des lieux par des chemins (réseau non orienté).
+
+```text
+soit Graphe carte = nouveau Graphe();
+carte.ajouter_sommet("Maison");
+carte.ajouter_sommet("École");
+carte.lier("Maison", "École");
+afficher carte.contient_sommet("Maison");
+afficher carte.voisins("Maison").taille();
+afficher carte.nombre_sommets();
+afficher carte.nombre_aretes();
+```
+
 `Fichier` permet de lire et d'écrire sur le disque (comme un fichier Java).
 
 ```text
