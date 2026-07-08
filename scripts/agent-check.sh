@@ -34,10 +34,10 @@ if [[ -z "$FRBIN" || -z "$IFRBIN" || ! -x "$FRBIN" || ! -x "$IFRBIN" ]]; then
   echo "agent-check: frlang/ifrlang introuvable après pip install -e ." >&2
   exit 1
 fi
-TMP_FR="$(mktemp --suffix=.fr)"
-printf '%s\n' 'soit nombre x = 6; x + 1;' >"$TMP_FR"
-"$FRBIN" "$TMP_FR" | grep -qx "7"
-rm -f "$TMP_FR"
+TMP_PROG="$(mktemp)"
+printf '%s\n' 'soit nombre x = 6; x + 1;' >"$TMP_PROG"
+"$FRBIN" "$TMP_PROG" | grep -qx "7"
+rm -f "$TMP_PROG"
 printf '2 + 2;\nquitter\n' | "$IFRBIN" | grep -Fq '4'
 
 echo "agent-check: ok"

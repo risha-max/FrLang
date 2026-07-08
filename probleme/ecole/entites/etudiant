@@ -1,0 +1,24 @@
+from personne import Personne;
+
+definir classe Etudiant herite de Personne {
+    soit nombre note;
+
+    constructeur() {
+    }
+
+    constructeur(nombre un_age, Mots un_prenom, Mots un_nom, nombre une_note) {
+        age = un_age;
+        prenom = un_prenom;
+        nom = un_nom;
+        note = une_note;
+    }
+
+    definir fonction afficher() {
+        afficher prenom;
+        afficher " ";
+        afficher nom;
+        afficher " (étudiant, note ";
+        afficher note;
+        afficher ")";
+    }
+}

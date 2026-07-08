@@ -3,7 +3,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-from frlang.errors import LexerError, ParseError
+from frlang.errors import FrLangError, LexerError, ParseError
 from frlang.interpreter import Interpreter
 from frlang.repl import InteractiveConsole, print_execution_result
 
@@ -16,9 +16,10 @@ def run_file(path: Path) -> int:
         return 1
 
     interpreter = Interpreter.session()
+    interpreter._source_path = path.resolve()
     try:
         result = interpreter.execute(source)
-    except (LexerError, ParseError) as error:
+    except (LexerError, ParseError, FrLangError) as error:
         print(error, file=sys.stderr)
         return 1
 

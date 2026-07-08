@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from frlang.classes import (
     ORIGINAL_CLASS_NAME,
     ClassConstructor,
@@ -12,7 +14,7 @@ from frlang.classes import (
     instances_equal,
     values_equal,
 )
-from frlang.errors import ReturnSignal
+from frlang.errors import LexerError, ParseError, ReturnSignal
 from frlang.functions import Parameter, UserFunction, copy_value
 from frlang.lexer import Lexer, Token, TokenKind
 from frlang.messages import (
@@ -23,6 +25,7 @@ from frlang.messages import (
     empty_expression,
     empty_program,
     empty_statement,
+    expected_dans_after_pourchaque,
     expected_equal,
     cannot_redefine_original,
     class_already_defined,
@@ -51,6 +54,7 @@ from frlang.messages import (
     missing_value_after_equal,
     modulo_by_zero,
     nested_pointer_not_allowed,
+    not_a_collection,
     nothing_value_not_allowed,
     not_a_pointer,
     object_name_needs_capital,
@@ -81,6 +85,13 @@ from frlang.messages import (
     wrong_constructor_argument_count,
     wrong_function_argument_count,
     wrong_type_in_expression,
+    circular_import,
+    import_file_not_found,
+    import_name_not_found,
+    import_module_attribute_not_found,
+    import_requires_module_name,
+    import_requires_import_keyword,
+    import_class_alias_not_supported,
 )
 from frlang.objects import (
     Carnet,
@@ -88,12 +99,15 @@ from frlang.objects import (
     Mots,
     Rangee,
     Sac,
+    build_range,
     create_object,
     default_value_for_type,
     fill_carnet_object,
     fill_list_object,
     fill_mots_object,
+    is_collection_object,
     is_object_type,
+    iterate_collection,
 )
 from frlang.pointers import Pointer
 from frlang.types import (
@@ -115,19 +129,23 @@ from frlang.types import (
     parse_type_name,
     pointer_target_type,
 )
+from frlang.imports import LoadedModule, ModuleNamespace, resolve_module_path
 from frlang.variables import Variable
 
 
 class Interpreter:
     """Interprète des expressions et de petits programmes avec variables."""
 
-    def __init__(self, source: str) -> None:
+    def __init__(self, source: str, *, source_path: Path | None = None) -> None:
         self._tokens = Lexer(source).tokenize()
         self._position = 0
         self._scopes: list[dict[str, Variable]] = [{}]
         self._functions: dict[str, UserFunction] = {}
         self._classes: dict[str, ClassDef] = {ORIGINAL_CLASS_NAME: create_original_class()}
         self._current_class_name: str | None = None
+        self._source_path: Path | None = source_path
+        self._import_stack: list[Path] = []
+        self._loaded_modules: dict[Path, LoadedModule] = {}
         self.output: list[str] = []
 
     @classmethod
@@ -139,6 +157,9 @@ class Interpreter:
         interpreter._functions = {}
         interpreter._classes = {ORIGINAL_CLASS_NAME: create_original_class()}
         interpreter._current_class_name = None
+        interpreter._source_path = None
+        interpreter._import_stack = []
+        interpreter._loaded_modules = {}
         interpreter.output = []
         return interpreter
 
@@ -182,7 +203,10 @@ class Interpreter:
             TokenKind.AFFICHER,
             TokenKind.DEFINIR,
             TokenKind.SI,
+            TokenKind.IMPORT,
+            TokenKind.FROM,
             TokenKind.TANTQUE,
+            TokenKind.POURCHAQUE,
             TokenKind.SEMICOLON,
             TokenKind.EQUAL,
             TokenKind.DOT,
@@ -238,6 +262,14 @@ class Interpreter:
                     self._while_statement()
                 except ReturnSignal as signal:
                     raise return_outside_function(self._previous().line, self._previous().column) from signal
+            elif self._check(TokenKind.POURCHAQUE):
+                self._advance()
+                try:
+                    self._pourchaque_statement()
+                except ReturnSignal as signal:
+                    raise return_outside_function(self._previous().line, self._previous().column) from signal
+            elif self._check(TokenKind.IMPORT) or self._check(TokenKind.FROM):
+                self._import_statement()
             elif self._check(TokenKind.RETOURNE):
                 token = self._peek()
                 raise return_outside_function(token.line, token.column)
@@ -598,6 +630,17 @@ class Interpreter:
     def _consume_nouveau_type_name(self) -> Token:
         if self._check(TokenKind.TYPE) and is_object_type(str(self._peek().value)):
             return self._advance()
+        if self._check(TokenKind.IDENTIFIER) and self._peek_next().kind == TokenKind.DOT:
+            module_token = self._advance()
+            self._advance()
+            class_token = self._consume(TokenKind.IDENTIFIER, expected_class_name)
+            class_name = self._resolve_module_class(
+                str(module_token.value),
+                str(class_token.value),
+                module_token.line,
+                module_token.column,
+            )
+            return Token(TokenKind.IDENTIFIER, class_name, class_token.line, class_token.column)
         if self._check(TokenKind.IDENTIFIER):
             token = self._advance()
             name = str(token.value)
@@ -910,6 +953,15 @@ class Interpreter:
             self._while_statement(function_context)
             return
 
+        if self._check(TokenKind.POURCHAQUE):
+            self._advance()
+            self._pourchaque_statement(function_context)
+            return
+
+        if self._check(TokenKind.IMPORT) or self._check(TokenKind.FROM):
+            self._import_statement()
+            return
+
         if self._check(TokenKind.RETOURNE):
             if function_context is None:
                 token = self._peek()
@@ -971,6 +1023,315 @@ class Interpreter:
                 self._skip_block()
                 return
             self._execute_block(function_context)
+
+    def _pourchaque_statement(
+        self,
+        function_context: tuple[TypeSpec | None, str, int, int] | None = None,
+    ) -> None:
+        name_token = self._consume_variable_name()
+        loop_name = str(name_token.value)
+        if not self._match(TokenKind.DANS):
+            token = self._peek()
+            raise expected_dans_after_pourchaque(token.line, token.column)
+
+        iterable_token = self._peek()
+        iterable = self._parse_pourchaque_iterable()
+        if not is_collection_object(iterable):
+            raise not_a_collection(
+                self._value_type_name(iterable),
+                iterable_token.line,
+                iterable_token.column,
+            )
+
+        items = iterate_collection(iterable)
+        if not self._check(TokenKind.LBRACE):
+            token = self._peek()
+            raise expected_value("{", token.line, token.column)
+        block_start = self._position
+
+        for item in items:
+            self._position = block_start
+            self._push_scope()
+            try:
+                loop_type = self._infer_loop_var_type(item)
+                loop_value = self._coerce_loop_value(item, loop_type)
+                self._current_scope()[loop_name] = Variable(loop_type, loop_value)
+                try:
+                    self._execute_block(function_context)
+                except ReturnSignal:
+                    raise
+            finally:
+                self._pop_scope()
+
+    def _parse_pourchaque_iterable(self) -> FrLangObject:
+        if self._check(TokenKind.IDENTIFIER) and str(self._peek().value) == "range":
+            return self._parse_range_call()
+        value = self._value_expression()
+        if not isinstance(value, FrLangObject):
+            token = self._previous()
+            raise not_a_collection(self._value_type_name(value), token.line, token.column)
+        return value
+
+    def _parse_range_call(self) -> Rangee:
+        start = self._peek()
+        self._advance()
+        self._consume(TokenKind.LPAREN, expected_parameter_list)
+        args: list[Value] = []
+        if not self._check(TokenKind.RPAREN):
+            while True:
+                args.append(self._numeric_expression())
+                if not self._match(TokenKind.COMMA):
+                    break
+        if not self._match(TokenKind.RPAREN):
+            token = self._peek()
+            raise missing_closing_paren(token.line, token.column)
+        return build_range(args, start.line, start.column)
+
+    def _import_statement(self) -> None:
+        if self._match(TokenKind.FROM):
+            start = self._previous()
+            module_name = self._parse_import_module_name()
+            if not self._match(TokenKind.IMPORT):
+                token = self._peek()
+                raise import_requires_import_keyword(token.line, token.column)
+            module = self._load_module(module_name, start.line, start.column)
+            self._parse_from_import_names(module, start.line, start.column)
+            self._consume_semicolon()
+            return
+
+        start = self._peek()
+        self._advance()
+        module_name = self._parse_import_module_name()
+        module = self._load_module(module_name, start.line, start.column)
+        local_name = module.name
+        if self._match(TokenKind.AS):
+            local_name = str(self._consume_variable_name().value)
+        self._bind_module_namespace(local_name, module, start.line, start.column)
+        self._consume_semicolon()
+
+    def _parse_import_module_name(self) -> str:
+        if self._check(TokenKind.TEXT):
+            return str(self._advance().value)
+        if self._check(TokenKind.IDENTIFIER):
+            return str(self._advance().value)
+        token = self._peek()
+        raise import_requires_module_name(token.line, token.column)
+
+    def _parse_from_import_names(self, module: LoadedModule, line: int, column: int) -> None:
+        while True:
+            name_token = self._consume_variable_name()
+            exported_name = str(name_token.value)
+            local_name = exported_name
+            if self._match(TokenKind.AS):
+                alias_token = self._consume_variable_name()
+                local_name = str(alias_token.value)
+                if exported_name in module.classes and local_name != exported_name:
+                    raise import_class_alias_not_supported(alias_token.line, alias_token.column)
+            self._bind_imported_name(local_name, module, exported_name, name_token.line, name_token.column)
+            if not self._match(TokenKind.COMMA):
+                break
+
+    def _load_module(self, module_name: str, line: int, column: int) -> LoadedModule:
+        try:
+            path = resolve_module_path(module_name, self._source_path)
+        except FileNotFoundError:
+            raise import_file_not_found(module_name, line, column) from None
+
+        canonical = path.resolve()
+        cached = self._loaded_modules.get(canonical)
+        if cached is not None:
+            return cached
+
+        if canonical in self._import_stack:
+            chain = " -> ".join(item.stem for item in self._import_stack) + f" -> {path.stem}"
+            raise circular_import(chain, line, column)
+
+        try:
+            source = path.read_text(encoding="utf-8")
+        except OSError as error:
+            raise import_file_not_found(module_name, line, column, detail=str(error)) from error
+
+        sub = Interpreter.session()
+        sub._source_path = path
+        sub._import_stack = list(self._import_stack)
+        sub._loaded_modules = self._loaded_modules
+
+        sub._import_stack.append(canonical)
+        try:
+            sub.execute(source)
+        except ParseError as error:
+            if error.message.startswith("Import circulaire"):
+                raise
+            raise ParseError(
+                f"Erreur dans le fichier importé « {path.name} » : {error.message}",
+                line=line,
+                column=column,
+                hint=f"Voir la ligne {error.line} du fichier « {path.name} ».",
+            ) from error
+        except LexerError as error:
+            raise ParseError(
+                f"Erreur dans le fichier importé « {path.name} » : {error.message}",
+                line=line,
+                column=column,
+                hint=f"Voir la ligne {error.line} du fichier « {path.name} ».",
+            ) from error
+
+        module = LoadedModule(
+            name=path.stem,
+            path=path,
+            functions=dict(sub._functions),
+            classes={
+                name: class_def
+                for name, class_def in sub._classes.items()
+                if name != ORIGINAL_CLASS_NAME
+            },
+            variables=dict(sub._scopes[0]),
+        )
+        self._loaded_modules[canonical] = module
+        self.output.extend(sub.output)
+        return module
+
+    def _merge_module_classes(self, module: LoadedModule, line: int, column: int) -> None:
+        for name, class_def in module.classes.items():
+            if name in self._classes and self._classes[name] is not class_def:
+                raise class_already_defined(name, line, column)
+            self._classes[name] = class_def
+
+    def _bind_module_namespace(self, local_name: str, module: LoadedModule, line: int, column: int) -> None:
+        scope = self._scopes[0]
+        if local_name in scope:
+            existing = scope[local_name]
+            if isinstance(existing.value, ModuleNamespace) and existing.value.module.path == module.path:
+                return
+            raise variable_already_defined(
+                local_name,
+                format_type_name(existing.var_type),
+                "Module",
+                line,
+                column,
+            )
+        if local_name in self._functions:
+            raise function_already_defined(local_name, line, column)
+        namespace = ModuleNamespace(self, module)
+        scope[local_name] = Variable(ClassType("Module"), namespace)
+
+    def _bind_imported_name(
+        self,
+        local_name: str,
+        module: LoadedModule,
+        exported_name: str,
+        line: int,
+        column: int,
+    ) -> None:
+        scope = self._scopes[0]
+
+        if exported_name in module.functions:
+            self._merge_module_classes(module, line, column)
+            if local_name in self._functions:
+                raise function_already_defined(local_name, line, column)
+            self._functions[local_name] = module.functions[exported_name]
+            return
+
+        if exported_name in module.classes:
+            if local_name != exported_name:
+                raise import_class_alias_not_supported(line, column)
+            self._merge_module_classes(module, line, column)
+            return
+
+        if exported_name in module.variables:
+            self._merge_module_classes(module, line, column)
+            if local_name in scope:
+                existing = scope[local_name]
+                imported = module.variables[exported_name]
+                raise variable_already_defined(
+                    local_name,
+                    format_type_name(existing.var_type),
+                    format_type_name(imported.var_type),
+                    line,
+                    column,
+                )
+            imported = module.variables[exported_name]
+            imported_value = (
+                copy_value(imported.value)
+                if isinstance(imported.var_type, VarType) and is_object_var_type(imported.var_type)
+                else imported.value
+            )
+            scope[local_name] = Variable(imported.var_type, imported_value)
+            return
+
+        raise import_name_not_found(module.name, exported_name, line, column)
+
+    def _push_module_scope(self, module: LoadedModule) -> None:
+        self._push_scope()
+        for name, variable in module.variables.items():
+            self._current_scope()[name] = Variable(variable.var_type, variable.value)
+
+    def _call_module_function(
+        self,
+        module: LoadedModule,
+        name: str,
+        args: list[Value],
+        line: int,
+        column: int,
+    ) -> Value:
+        func = module.functions[name]
+        self._merge_module_classes(module, line, column)
+        if len(args) != len(func.params):
+            raise wrong_function_argument_count(name, len(func.params), len(args), line, column)
+
+        saved_position = self._position
+        self._push_module_scope(module)
+        try:
+            self._bind_function_parameters(func, args, line, column)
+            return self._execute_function_body(func)
+        finally:
+            self._position = saved_position
+            self._pop_scope()
+
+    def _resolve_module_class(
+        self,
+        module_name: str,
+        class_name: str,
+        line: int,
+        column: int,
+    ) -> str:
+        variable = self._lookup_variable_entry(module_name, line, column)
+        if not isinstance(variable.value, ModuleNamespace):
+            raise import_module_attribute_not_found(module_name, class_name, line, column)
+        loaded = variable.value.module
+        if class_name not in loaded.classes:
+            raise import_module_attribute_not_found(module_name, class_name, line, column)
+        self._merge_module_classes(loaded, line, column)
+        return class_name
+
+    def _infer_loop_var_type(self, item: Value) -> TypeSpec:
+        if isinstance(item, str):
+            return VarType.MOTS
+        if isinstance(item, bool):
+            return VarType.LOGIQUE
+        if isinstance(item, (int, float)) and not isinstance(item, bool):
+            return VarType.NOMBRE
+        if isinstance(item, UserInstance):
+            return ClassType(item.class_name)
+        if isinstance(item, FrLangObject):
+            parsed = parse_type_name(item.type_name)
+            if parsed is not None:
+                return parsed
+        return VarType.NOMBRE
+
+    def _coerce_loop_value(self, item: Value, loop_type: TypeSpec) -> Value:
+        if isinstance(item, UserInstance):
+            return item
+        if isinstance(loop_type, VarType) and loop_type == VarType.MOTS:
+            if isinstance(item, Mots):
+                return copy_value(item)
+            if isinstance(item, str):
+                return Mots(item)
+        if isinstance(loop_type, ClassType) or (
+            isinstance(loop_type, VarType) and is_object_var_type(loop_type)
+        ):
+            return copy_value(item)
+        return item
 
     def _execute_block(
         self,
@@ -1394,6 +1755,8 @@ class Interpreter:
             return self._parse_valeur_call()
         if name == "type":
             return self._parse_type_call()
+        if name == "range":
+            return self._parse_range_call()
         return None
 
     def _rien_for_type(self, var_type: TypeSpec, name: str, line: int, column: int) -> Value:
@@ -1618,6 +1981,37 @@ class Interpreter:
             method_token = self._parse_method_name_token()
             method_name = str(method_token.value)
 
+            if isinstance(value, ModuleNamespace):
+                module = value.module
+                if method_name in module.functions:
+                    if self._match(TokenKind.LPAREN):
+                        args = self._parse_argument_list()
+                        if not self._match(TokenKind.RPAREN):
+                            token = self._peek()
+                            raise missing_closing_paren(token.line, token.column)
+                        value = self._call_module_function(
+                            module,
+                            method_name,
+                            args,
+                            method_token.line,
+                            method_token.column,
+                        )
+                        continue
+                    raise expected_method_parentheses(
+                        method_name,
+                        method_token.line,
+                        method_token.column,
+                    )
+                if method_name in module.variables:
+                    value = module.variables[method_name].value
+                    continue
+                raise import_module_attribute_not_found(
+                    value.module_name,
+                    method_name,
+                    method_token.line,
+                    method_token.column,
+                )
+
             if self._match(TokenKind.LPAREN):
                 args = self._parse_argument_list()
 
@@ -1802,31 +2196,12 @@ class Interpreter:
             )
 
     def _mots_expression(self, name: str, line: int, column: int) -> Mots:
-        if self._check(TokenKind.TEXT):
-            return Mots(str(self._advance().value))
-
-        if self._check(TokenKind.NOUVEAU):
-            value = self._parse_nouveau()
-            if isinstance(value, Mots):
-                return value
-            token = self._previous()
-            raise type_mismatch(name, VarType.MOTS.value, self._value_type_name(value), token.line, token.column)
-
-        if self._check(TokenKind.IDENTIFIER):
-            token = self._advance()
-            value = self._lookup_variable(token)
-            if isinstance(value, Mots):
-                return value
-            raise type_mismatch(
-                str(token.value),
-                VarType.MOTS.value,
-                self._value_type_name(value),
-                token.line,
-                token.column,
-            )
-
-        token = self._peek()
-        raise expected_value(str(token.value), token.line, token.column)
+        value = self._value_expression()
+        if isinstance(value, Mots):
+            return value
+        if isinstance(value, str):
+            return Mots(value)
+        raise type_mismatch(name, VarType.MOTS.value, self._value_type_name(value), line, column)
 
     def _value_type_name(self, value: Value | Pointer) -> str:
         if is_nothing(value):

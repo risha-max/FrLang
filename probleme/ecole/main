@@ -1,0 +1,16 @@
+from "entites/professeur" import Professeur;
+from "entites/etudiant" import Etudiant;
+
+soit Professeur prof = nouveau Professeur(45, "Sophie", "Gagnon", "Mathématiques");
+soit Etudiant alice = nouveau Etudiant(17, "Alice", "Martin", 88);
+soit Etudiant bob = nouveau Etudiant(18, "Bob", "Tremblay", 76);
+
+soit Rangee groupe = nouveau Rangee();
+groupe.ajouter(prof);
+groupe.ajouter(alice);
+groupe.ajouter(bob);
+
+afficher "=== La classe ===";
+pourchaque personne dans groupe {
+    personne.afficher();
+}

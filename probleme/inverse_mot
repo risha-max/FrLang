@@ -1,0 +1,10 @@
+definir fonction inverser_manuel(Mots mot) {
+    soit Mots resultat = nouveau Mots("");
+    pourchaque i dans range(mot.taille(), 0, -1) {
+        resultat = resultat.concatener(mot.caractere(i));
+    }
+    retourne resultat;
+} retourne Mots
+
+afficher inverser_manuel(nouveau Mots("bonjour"));
+afficher inverser_manuel(nouveau Mots("radar"));

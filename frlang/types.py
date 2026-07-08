@@ -113,6 +113,16 @@ def is_object_var_type(var_type: VarType) -> bool:
     }
 
 
+def is_collection_var_type(var_type: VarType) -> bool:
+    return var_type in {
+        VarType.RANGEE,
+        VarType.SAC,
+        VarType.CARNET,
+        VarType.TAS,
+        VarType.FILE,
+    }
+
+
 def format_pointer(pointer: Pointer) -> str:
     return (
         f"L'adresse hexadécimale de {pointer.target_name} est {pointer.address_hex}"

@@ -330,8 +330,28 @@ class Mots(FrLangObject):
                 if isinstance(other, Mots):
                     return self.text == other.text
                 return False
+            case "taille":
+                _expect_count(name, args, 0, line, column)
+                return len(self.text)
+            case "caractere":
+                _expect_count(name, args, 1, line, column)
+                return self._caractere(args[0], line, column)
+            case "concatener":
+                _expect_count(name, args, 1, line, column)
+                other = args[0]
+                if not isinstance(other, Mots):
+                    raise unknown_object_method(self.type_name, name, line, column)
+                return Mots(self.text + other.text)
             case _:
                 raise unknown_object_method(self.type_name, name, line, column)
+
+    def _caractere(self, position: Value, line: int, column: int) -> Mots:
+        if isinstance(position, bool) or not isinstance(position, (int, float)):
+            raise index_out_of_range(self.type_name, position, len(self.text), line, column)
+        index = int(position)
+        if index < 1 or index > len(self.text):
+            raise index_out_of_range(self.type_name, index, len(self.text), line, column)
+        return Mots(self.text[index - 1])
 
 
 OBJECT_TYPES: dict[str, Callable[[], FrLangObject]] = {
@@ -411,3 +431,69 @@ def default_value_for_type(type_spec: TypeSpec) -> Value:
     if is_object_var_type(type_spec):
         return create_object(type_spec.value)
     raise ValueError(f"Type inconnu : {type_spec}")
+
+
+COLLECTION_TYPE_NAMES: frozenset[str] = frozenset(
+    {VarType.RANGEE.value, VarType.SAC.value, VarType.CARNET.value, VarType.TAS.value, VarType.FILE.value}
+)
+
+
+def is_collection_object(value: object) -> bool:
+    return isinstance(value, (Rangee, Sac, Carnet, Tas, File))
+
+
+def iterate_collection(obj: FrLangObject) -> list[Value]:
+    if isinstance(obj, Rangee):
+        return list(obj.items)
+    if isinstance(obj, Sac):
+        return list(obj.items)
+    if isinstance(obj, Tas):
+        return list(obj.items)
+    if isinstance(obj, File):
+        return list(obj.items)
+    if isinstance(obj, Carnet):
+        return [obj.entries[key] for key in obj.order]
+    raise TypeError(f"Objet non itérable : {obj.type_name}")
+
+
+def _as_range_int(value: Value, name: str, line: int, column: int) -> int:
+    from frlang.messages import range_requires_integer
+
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise range_requires_integer(name, line, column)
+    if isinstance(value, float) and not value.is_integer():
+        raise range_requires_integer(name, line, column)
+    return int(value)
+
+
+def build_range(args: list[Value], line: int, column: int) -> Rangee:
+    from frlang.messages import range_step_cannot_be_zero, range_wrong_argument_count
+
+    if not args or len(args) > 3:
+        raise range_wrong_argument_count(len(args), line, column)
+
+    if len(args) == 1:
+        start, stop, step = 0, _as_range_int(args[0], "stop", line, column), 1
+    elif len(args) == 2:
+        start = _as_range_int(args[0], "start", line, column)
+        stop = _as_range_int(args[1], "stop", line, column)
+        step = 1
+    else:
+        start = _as_range_int(args[0], "start", line, column)
+        stop = _as_range_int(args[1], "stop", line, column)
+        step = _as_range_int(args[2], "step", line, column)
+
+    if step == 0:
+        raise range_step_cannot_be_zero(line, column)
+
+    items: list[Value] = []
+    current = start
+    if step > 0:
+        while current < stop:
+            items.append(current)
+            current += step
+    else:
+        while current > stop:
+            items.append(current)
+            current += step
+    return Rangee(items=items)

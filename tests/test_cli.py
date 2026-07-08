@@ -22,13 +22,13 @@ def test_session_execute_afficher() -> None:
 
 
 def test_run_file(tmp_path: Path) -> None:
-    program = tmp_path / "demo.fr"
+    program = tmp_path / "demo"
     program.write_text("soit nombre x = 3; x + 4;", encoding="utf-8")
     assert run_file(program) == 0
 
 
 def test_run_file_missing(tmp_path: Path) -> None:
-    assert run_file(tmp_path / "absent.fr") == 1
+    assert run_file(tmp_path / "absent") == 1
 
 
 def test_frlang_main_help() -> None:
@@ -36,11 +36,11 @@ def test_frlang_main_help() -> None:
 
 
 def test_frlang_main_missing_file() -> None:
-    assert frlang_main(["inexistant.fr"]) == 1
+    assert frlang_main(["inexistant"]) == 1
 
 
 def test_frlang_main_too_many_args() -> None:
-    assert frlang_main(["a.fr", "b.fr"]) == 1
+    assert frlang_main(["a", "b"]) == 1
 
 
 def test_source_needs_continuation() -> None:
@@ -84,13 +84,13 @@ def test_interactive_console_help() -> None:
 
 
 def test_run_file_syntax_error(tmp_path: Path) -> None:
-    program = tmp_path / "bad.fr"
+    program = tmp_path / "bad"
     program.write_text("soit nombre x = ;", encoding="utf-8")
     assert run_file(program) == 1
 
 
 def test_run_file_with_afficher(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
-    program = tmp_path / "afficher.fr"
+    program = tmp_path / "afficher"
     program.write_text('afficher "Salut";', encoding="utf-8")
     assert run_file(program) == 0
     assert capsys.readouterr().out.strip() == "Salut"

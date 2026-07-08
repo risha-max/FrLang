@@ -54,7 +54,7 @@ def test_return_outside_function() -> None:
 def test_n_premiers_primes_program() -> None:
     from pathlib import Path
 
-    source = Path("probleme/n_premiers_primes.fr").read_text(encoding="utf-8")
+    source = Path("probleme/n_premiers_primes").read_text(encoding="utf-8")
     interpreter = Interpreter(source)
     interpreter.run()
     assert interpreter.output == ["Rangee [2, 3, 5, 7, 11, 13, 17, 19, 23, 29]"]

@@ -1,0 +1,24 @@
+from personne import Personne;
+
+definir classe Professeur herite de Personne {
+    soit Mots matiere;
+
+    constructeur() {
+    }
+
+    constructeur(nombre un_age, Mots un_prenom, Mots un_nom, Mots une_matiere) {
+        age = un_age;
+        prenom = un_prenom;
+        nom = un_nom;
+        matiere = une_matiere;
+    }
+
+    definir fonction afficher() {
+        afficher prenom;
+        afficher " ";
+        afficher nom;
+        afficher " (professeur de ";
+        afficher matiere;
+        afficher ")";
+    }
+}

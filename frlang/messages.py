@@ -932,3 +932,153 @@ def wrong_constructor_argument_count(
         column=column,
         hint=f"Exemple : nouveau {type_name}() pour un objet vide.",
     )
+
+
+def expected_dans_after_pourchaque(line: int, column: int) -> ParseError:
+    return ParseError(
+        "Après le nom de variable, il faut écrire dans.",
+        line=line,
+        column=column,
+        hint="Exemple : pourchaque i dans range(5) { afficher i; }",
+    )
+
+
+def not_a_collection(got: str, line: int, column: int) -> ParseError:
+    return ParseError(
+        f"Pour pourchaque, il faut une Collection, pas un {got}.",
+        line=line,
+        column=column,
+        hint="Utilise Rangee, Sac, Carnet, Tas, File ou range(...).",
+    )
+
+
+def range_wrong_argument_count(got: int, line: int, column: int) -> ParseError:
+    return ParseError(
+        f"range() prend 1, 2 ou 3 nombres, pas {got}.",
+        line=line,
+        column=column,
+        hint="Exemples : range(10); range(2, 10); range(0, 10, 2);",
+    )
+
+
+def range_requires_integer(name: str, line: int, column: int) -> ParseError:
+    return ParseError(
+        f"Pour range(), « {name} » doit être un nombre entier.",
+        line=line,
+        column=column,
+        hint="Exemple : range(5) ou range(0, 10, 2);",
+    )
+
+
+def range_step_cannot_be_zero(line: int, column: int) -> ParseError:
+    return ParseError(
+        "Le pas de range() ne peut pas être zéro.",
+        line=line,
+        column=column,
+        hint="Utilise un pas différent de 0.",
+    )
+
+
+def import_requires_module_name(line: int, column: int) -> ParseError:
+    return ParseError(
+        "Après import, il faut le nom du fichier à charger.",
+        line=line,
+        column=column,
+        hint='Exemple : import utilitaires; ou import "dossier/module";',
+    )
+
+
+def import_requires_name(line: int, column: int) -> ParseError:
+    return ParseError(
+        "Après import, il faut dire quoi importer.",
+        line=line,
+        column=column,
+        hint="Exemple : from utilitaires import saluer;",
+    )
+
+
+def import_requires_from(line: int, column: int) -> ParseError:
+    return ParseError(
+        "Pour importer un nom précis, commence par from.",
+        line=line,
+        column=column,
+        hint="Exemple : from utilitaires import saluer;",
+    )
+
+
+def import_requires_import_keyword(line: int, column: int) -> ParseError:
+    return ParseError(
+        "Après from, il faut écrire import.",
+        line=line,
+        column=column,
+        hint="Exemple : from utilitaires import saluer;",
+    )
+
+
+def import_file_not_found(
+    module_name: str,
+    line: int,
+    column: int,
+    *,
+    detail: str | None = None,
+) -> ParseError:
+    message = f"Je ne trouve pas le fichier « {module_name} »."
+    if detail:
+        message = f"{message} ({detail})"
+    return ParseError(
+        message,
+        line=line,
+        column=column,
+        hint="Le fichier doit être à côté du programme ou dans le dossier courant.",
+    )
+
+
+def circular_import(chain: str, line: int, column: int) -> ParseError:
+    return ParseError(
+        f"Import circulaire : {chain}.",
+        line=line,
+        column=column,
+        hint="Deux fichiers s'importent l'un l'autre. Réorganise le code.",
+    )
+
+
+def import_name_not_found(module_name: str, name: str, line: int, column: int) -> ParseError:
+    return ParseError(
+        f"« {name} » n'existe pas dans « {module_name} ».",
+        line=line,
+        column=column,
+        hint="Vérifie l'orthographe ou définis ce nom dans le fichier importé.",
+    )
+
+
+def import_name_not_exported(module_name: str, name: str, line: int, column: int) -> ParseError:
+    return ParseError(
+        f"Le module « {module_name} » n'a pas de méthode « {name} ».",
+        line=line,
+        column=column,
+        hint="Utilise from ... import pour les fonctions et variables du module.",
+    )
+
+
+def import_class_alias_not_supported(line: int, column: int) -> ParseError:
+    return ParseError(
+        "On ne peut pas encore renommer une classe importée avec as.",
+        line=line,
+        column=column,
+        hint="Écris plutôt : from module import MaClasse;",
+    )
+
+
+def import_module_attribute_not_found(
+    module_name: str,
+    name: str,
+    line: int,
+    column: int,
+) -> ParseError:
+    return ParseError(
+        f"« {module_name}.{name} » n'existe pas.",
+        line=line,
+        column=column,
+        hint="Vérifie le nom dans le fichier importé.",
+    )
+

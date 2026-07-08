@@ -1,0 +1,23 @@
+definir classe Personne {
+    soit nombre age;
+    soit Mots prenom;
+    soit Mots nom;
+
+    constructeur() {
+    }
+
+    constructeur(nombre un_age, Mots un_prenom, Mots un_nom) {
+        age = un_age;
+        prenom = un_prenom;
+        nom = un_nom;
+    }
+
+    definir fonction afficher() {
+        afficher prenom;
+        afficher " ";
+        afficher nom;
+        afficher ", ";
+        afficher age;
+        afficher " ans";
+    }
+}

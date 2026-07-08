@@ -53,7 +53,12 @@ class TokenKind(Enum):
     CONSTRUCTEUR = auto()
     SI = auto()
     SINON = auto()
+    IMPORT = auto()
+    FROM = auto()
+    AS = auto()
     TANTQUE = auto()
+    POURCHAQUE = auto()
+    DANS = auto()
     EQEQ = auto()
     NEQ = auto()
     LT = auto()
@@ -80,7 +85,12 @@ _KEYWORDS.update(
         "constructeur": TokenKind.CONSTRUCTEUR,
         "si": TokenKind.SI,
         "sinon": TokenKind.SINON,
+        "import": TokenKind.IMPORT,
+        "from": TokenKind.FROM,
+        "as": TokenKind.AS,
         "tantque": TokenKind.TANTQUE,
+        "pourchaque": TokenKind.POURCHAQUE,
+        "dans": TokenKind.DANS,
         "pointeur": TokenKind.TYPE,
         "nombre": TokenKind.TYPE,
         "Mots": TokenKind.TYPE,
