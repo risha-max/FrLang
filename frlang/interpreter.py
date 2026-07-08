@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from pathlib import Path
+
 from frlang.classes import (
     ORIGINAL_CLASS_NAME,
     ClassConstructor,
@@ -108,6 +110,7 @@ from frlang.messages import (
 )
 from frlang.objects import (
     Carnet,
+    Fichier,
     FrLangObject,
     Mots,
     Rangee,
@@ -116,6 +119,7 @@ from frlang.objects import (
     create_object,
     default_value_for_type,
     fill_carnet_object,
+    fill_fichier_object,
     fill_list_object,
     fill_mots_object,
     is_collection_object,
@@ -630,6 +634,14 @@ class Interpreter:
                 raise missing_closing_paren(token.line, token.column)
             if type_name == "Mots":
                 return fill_mots_object(obj, args, type_token.line, type_token.column)
+            if type_name == "Fichier":
+                fichier = fill_fichier_object(obj, args, type_token.line, type_token.column)
+                fichier.base_dir = (
+                    self._source_path.parent.resolve()
+                    if self._source_path is not None
+                    else Path.cwd()
+                )
+                return fichier
             return fill_list_object(obj, args, type_token.line, type_token.column)
 
         if type_name in self._classes:

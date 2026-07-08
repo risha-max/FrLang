@@ -100,6 +100,7 @@ _KEYWORDS.update(
         "Carnet": TokenKind.TYPE,
         "Tas": TokenKind.TYPE,
         "File": TokenKind.TYPE,
+        "Fichier": TokenKind.TYPE,
         "vrai": TokenKind.VRAI,
         "faux": TokenKind.FAUX,
         "rien": TokenKind.RIEN,

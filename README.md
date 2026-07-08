@@ -121,6 +121,21 @@ afficher attente.vide();
 afficher attente.taille();
 ```
 
+`Fichier` permet de lire et d'écrire sur le disque (comme un fichier Java).
+
+```text
+soit Fichier journal = nouveau Fichier("notes.txt");
+journal.ecrire("Hello world");
+journal.ecrire(42);
+journal.fermer();
+
+soit Fichier lecture = nouveau Fichier("notes.txt");
+afficher lecture.lire_ligne(1);
+afficher lecture.existe();
+```
+
+Méthodes : `ecrire`, `lire`, `lire_ligne`, `fermer`, `existe`, `chemin`, `taille`. Voir `probleme/fichier_personne`.
+
 Toutes les classes créées héritent de `Original`, qui fournit `afficher()` et `equals(...)`.
 
 ## Serveur LSP

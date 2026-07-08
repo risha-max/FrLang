@@ -1,0 +1,39 @@
+definir classe Personne {
+    soit nombre age;
+    soit Mots prenom;
+    soit Mots nom_famille;
+
+    constructeur(nombre un_age, Mots un_prenom, Mots un_nom) {
+        age = un_age;
+        prenom = un_prenom;
+        nom_famille = un_nom;
+    }
+
+    definir fonction afficher() {
+        afficher prenom;
+        afficher " ";
+        afficher nom_famille;
+        afficher ", ";
+        afficher age;
+        afficher " ans";
+    }
+}
+
+soit Fichier journal = nouveau Fichier("journal.txt");
+journal.ecrire("Hello world");
+
+soit Personne auteur = nouveau Personne(30, "Alice", "Martin");
+journal.ecrire(auteur.age);
+journal.ecrire(auteur.prenom);
+journal.ecrire(auteur.nom_famille);
+journal.fermer();
+
+soit Fichier lecture = nouveau Fichier("journal.txt");
+afficher lecture.lire_ligne(1);
+
+soit Personne retrouvee = nouveau Personne(
+    lecture.lire_ligne(2).en_nombre(),
+    lecture.lire_ligne(3),
+    lecture.lire_ligne(4)
+);
+retrouvee.afficher();

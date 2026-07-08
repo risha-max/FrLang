@@ -35,6 +35,7 @@ TYPES: tuple[str, ...] = (
     "Carnet",
     "Tas",
     "File",
+    "Fichier",
 )
 
 BUILTINS: tuple[str, ...] = (
@@ -45,12 +46,13 @@ BUILTINS: tuple[str, ...] = (
 )
 
 OBJECT_METHODS: dict[str, tuple[str, ...]] = {
-    "Mots": ("inverser", "equals", "taille", "caractere", "concatener"),
+    "Mots": ("inverser", "equals", "taille", "caractere", "concatener", "en_nombre"),
     "Rangee": ("ajouter", "element", "premier", "dernier", "taille", "contient", "vider"),
     "Sac": ("ajouter", "retirer", "taille", "contient", "vider"),
     "Carnet": ("etiqueter", "element", "contient", "etiquettes", "taille", "vider"),
     "Tas": ("empiler", "depiler", "taille", "vide"),
     "File": ("enfiler", "defiler", "taille", "vide"),
+    "Fichier": ("ecrire", "lire", "lire_ligne", "fermer", "existe", "chemin", "taille"),
     "Original": ("afficher", "equals"),
 }
 

@@ -28,6 +28,7 @@ class VarType(Enum):
     CARNET = "Carnet"
     TAS = "Tas"
     FILE = "File"
+    FICHIER = "Fichier"
 
 
 @dataclass(frozen=True, slots=True)
@@ -82,6 +83,7 @@ _LEGACY_OBJECT_TYPE_NAMES: dict[str, VarType] = {
     "carnet": VarType.CARNET,
     "tas": VarType.TAS,
     "file": VarType.FILE,
+    "fichier": VarType.FICHIER,
     "mots": VarType.MOTS,
 }
 
@@ -138,6 +140,7 @@ def is_object_var_type(var_type: VarType) -> bool:
         VarType.CARNET,
         VarType.TAS,
         VarType.FILE,
+        VarType.FICHIER,
     }
 
 

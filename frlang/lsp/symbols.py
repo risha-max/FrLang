@@ -16,6 +16,7 @@ _BUILTIN_TYPES = {
     "Carnet",
     "Tas",
     "File",
+    "Fichier",
 }
 
 

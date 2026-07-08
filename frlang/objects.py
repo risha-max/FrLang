@@ -2,12 +2,16 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Callable
 
 from frlang.messages import (
     carnet_key_missing,
     empty_collection,
+    fichier_introuvable,
+    fichier_ligne_hors_limites,
     index_out_of_range,
+    mots_not_a_number,
     sac_no_order_access,
     unknown_object_method,
     wrong_constructor_argument_count,
@@ -343,8 +347,23 @@ class Mots(FrLangObject):
                 if not isinstance(other, Mots):
                     raise unknown_object_method(self.type_name, name, line, column)
                 return Mots(self.text + other.text)
+            case "en_nombre":
+                _expect_count(name, args, 0, line, column)
+                return self._en_nombre(line, column)
             case _:
                 raise unknown_object_method(self.type_name, name, line, column)
+
+    def _en_nombre(self, line: int, column: int) -> int | float:
+        text = self.text.strip()
+        if not text:
+            raise mots_not_a_number(self.text, line, column)
+        try:
+            if "." in text:
+                value = float(text)
+                return int(value) if value.is_integer() else value
+            return int(text)
+        except ValueError:
+            raise mots_not_a_number(self.text, line, column)
 
     def _caractere(self, position: Value, line: int, column: int) -> Mots:
         if isinstance(position, bool) or not isinstance(position, (int, float)):
@@ -355,6 +374,84 @@ class Mots(FrLangObject):
         return Mots(self.text[index - 1])
 
 
+@dataclass
+class Fichier(FrLangObject):
+    path: str = ""
+    base_dir: Path = field(default_factory=Path.cwd)
+    _written: bool = False
+
+    @property
+    def type_name(self) -> str:
+        return "Fichier"
+
+    def describe(self) -> str:
+        return f"Fichier({self.path})"
+
+    def resolved_path(self) -> Path:
+        candidate = Path(self.path)
+        if candidate.is_absolute():
+            return candidate
+        return (self.base_dir / candidate).resolve()
+
+    def _read_lines(self, line: int, column: int) -> list[str]:
+        path = self.resolved_path()
+        if not path.exists():
+            raise fichier_introuvable(self.path, line, column)
+        return path.read_text(encoding="utf-8").splitlines()
+
+    def call_method(
+        self,
+        name: str,
+        args: list[Value],
+        line: int,
+        column: int,
+    ) -> Value | None:
+        match name:
+            case "ecrire":
+                _expect_count(name, args, 1, line, column)
+                path = self.resolved_path()
+                path.parent.mkdir(parents=True, exist_ok=True)
+                mode = "a" if self._written else "w"
+                with path.open(mode, encoding="utf-8") as handle:
+                    handle.write(format_value(args[0]))
+                    handle.write("\n")
+                self._written = True
+                return None
+            case "lire":
+                _expect_count(name, args, 0, line, column)
+                path = self.resolved_path()
+                if not path.exists():
+                    raise fichier_introuvable(self.path, line, column)
+                return Mots(path.read_text(encoding="utf-8"))
+            case "lire_ligne":
+                _expect_count(name, args, 1, line, column)
+                lines = self._read_lines(line, column)
+                position = args[0]
+                if isinstance(position, bool) or not isinstance(position, (int, float)):
+                    raise fichier_ligne_hors_limites(position, len(lines), line, column)
+                index = int(position)
+                if index < 1 or index > len(lines):
+                    raise fichier_ligne_hors_limites(index, len(lines), line, column)
+                return Mots(lines[index - 1])
+            case "fermer":
+                _expect_count(name, args, 0, line, column)
+                return None
+            case "existe":
+                _expect_count(name, args, 0, line, column)
+                return self.resolved_path().exists()
+            case "chemin":
+                _expect_count(name, args, 0, line, column)
+                return Mots(str(self.resolved_path()))
+            case "taille":
+                _expect_count(name, args, 0, line, column)
+                path = self.resolved_path()
+                if not path.exists():
+                    return 0
+                return path.stat().st_size
+            case _:
+                raise unknown_object_method(self.type_name, name, line, column)
+
+
 OBJECT_TYPES: dict[str, Callable[[], FrLangObject]] = {
     "Mots": Mots,
     "Rangee": Rangee,
@@ -362,6 +459,7 @@ OBJECT_TYPES: dict[str, Callable[[], FrLangObject]] = {
     "Carnet": Carnet,
     "Tas": Tas,
     "File": File,
+    "Fichier": Fichier,
 }
 
 
@@ -418,6 +516,26 @@ def fill_mots_object(
         return Mots(arg)
     if isinstance(arg, Mots):
         return Mots(arg.text)
+    raise wrong_constructor_argument_count(obj.type_name, 1, len(args), line, column)
+
+
+def fill_fichier_object(
+    obj: FrLangObject,
+    args: list[Value],
+    line: int,
+    column: int,
+) -> Fichier:
+    if not isinstance(obj, Fichier):
+        raise wrong_constructor_argument_count(obj.type_name, 1, len(args), line, column)
+    if len(args) != 1:
+        raise wrong_constructor_argument_count(obj.type_name, 1, len(args), line, column)
+    arg = args[0]
+    if isinstance(arg, Mots):
+        obj.path = arg.text
+        return obj
+    if isinstance(arg, str):
+        obj.path = arg
+        return obj
     raise wrong_constructor_argument_count(obj.type_name, 1, len(args), line, column)
 
 

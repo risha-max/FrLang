@@ -4,13 +4,14 @@ from frlang.errors import LexerError, ParseError
 
 _OPERATORS_HINT = "Tu peux utiliser : +  -  *  /  mod  ^  et des parenthèses ( )"
 _STATEMENT_HINT = "N'oublie pas le ; à la fin. Exemple : soit nombre x = 5;"
-_TYPES_HINT = "Les sortes possibles : nombre, logique, nombre[10], logique[5], Mots, Rangee, Sac, Carnet, Tas, File."
+_TYPES_HINT = "Les sortes possibles : nombre, logique, nombre[10], logique[5], Mots, Rangee, Sac, Carnet, Tas, File, Fichier."
 _OBJECT_TYPE_RENAMES = {
     "rangée": "Rangee",
     "sac": "Sac",
     "carnet": "Carnet",
     "tas": "Tas",
     "file": "File",
+    "fichier": "Fichier",
 }
 
 
@@ -213,7 +214,7 @@ def expected_value(symbol: str, line: int, column: int) -> ParseError:
             hint="Exemple : soit logique actif = vrai;",
         )
 
-    if symbol in {"nombre", "logique", "Mots", "Rangee", "Sac", "Carnet", "Tas", "File"}:
+    if symbol in {"nombre", "logique", "Mots", "Rangee", "Sac", "Carnet", "Tas", "File", "Fichier"}:
         return type_in_expression(symbol, line, column)
 
     return ParseError(
@@ -341,7 +342,7 @@ def type_mismatch(
 
 
 def wrong_type_in_expression(var_type: str, line: int, column: int) -> ParseError:
-    if var_type in {"Mots", "Rangee", "Sac", "Carnet", "Tas", "File"}:
+    if var_type in {"Mots", "Rangee", "Sac", "Carnet", "Tas", "File", "Fichier"}:
         return object_in_numeric_expression(var_type, line, column)
 
     return ParseError(
@@ -370,6 +371,8 @@ def _type_hint(var_type: str) -> str:
             return "Exemple : soit Tas assiettes = nouveau Tas();"
         case "File":
             return "Exemple : soit File attente = nouveau File();"
+        case "Fichier":
+            return 'Exemple : soit Fichier journal = nouveau Fichier("notes.txt");'
         case str() if var_type.startswith("pointeur "):
             return f"Exemple : soit {var_type} p = adresse(x);"
         case _:
@@ -497,7 +500,7 @@ def expected_method_parentheses(method: str, line: int, column: int) -> ParseErr
 def _object_methods_hint(obj_type: str) -> str:
     match obj_type:
         case "Mots":
-            return "Tu peux utiliser : inverser, equals."
+            return "Tu peux utiliser : inverser, equals, taille, caractere, concatener, en_nombre."
         case "Rangee":
             return "Tu peux utiliser : ajouter, element, premier, dernier, taille, contient, vider."
         case "Sac":
@@ -508,6 +511,8 @@ def _object_methods_hint(obj_type: str) -> str:
             return "Tu peux utiliser : empiler, depiler, taille, vide."
         case "File":
             return "Tu peux utiliser : enfiler, defiler, taille, vide."
+        case "Fichier":
+            return "Tu peux utiliser : ecrire, lire, lire_ligne, fermer, existe, chemin, taille."
         case _:
             return "Vérifie le mot après le point."
 
@@ -797,6 +802,33 @@ def carnet_literal_requires_colon(key: str, line: int, column: int) -> ParseErro
         line=line,
         column=column,
         hint='Exemple : {"nom": "Léa"} ou {nom: "Léa"}',
+    )
+
+
+def fichier_introuvable(path: str, line: int, column: int) -> ParseError:
+    return ParseError(
+        f"Je ne trouve pas le fichier « {path} ».",
+        line=line,
+        column=column,
+        hint="Vérifie le chemin ou écris d'abord dedans avec ecrire().",
+    )
+
+
+def fichier_ligne_hors_limites(index: object, size: int, line: int, column: int) -> ParseError:
+    return ParseError(
+        f"La ligne {index} n'existe pas : le fichier a {size} ligne(s).",
+        line=line,
+        column=column,
+        hint="Les lignes commencent à 1.",
+    )
+
+
+def mots_not_a_number(text: str, line: int, column: int) -> ParseError:
+    return ParseError(
+        f"« {text} » n'est pas un nombre.",
+        line=line,
+        column=column,
+        hint="Utilise en_nombre() seulement sur un texte comme « 42 ».",
     )
 
 
