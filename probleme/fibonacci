@@ -1,0 +1,32 @@
+definir fonction fib(nombre n) {
+    si n <= 1 {
+        retourne n;
+    }
+    retourne fib(n - 1) + fib(n - 2);
+} retourne nombre
+
+soit Carnet memo = nouveau Carnet();
+
+definir fonction fib_cache(nombre n) {
+    si memo.contient(n) {
+        retourne memo.element(n);
+    }
+    si n <= 1 {
+        memo.etiqueter(n, n);
+        retourne n;
+    }
+    soit nombre r = fib_cache(n - 1) + fib_cache(n - 2);
+    memo.etiqueter(n, r);
+    retourne r;
+} retourne nombre
+
+soit nombre n = 10;
+afficher fib(n);
+afficher fib_cache(n);
+
+soit nombre grand = 20;
+afficher fib(grand);
+afficher fib_cache(grand);
+
+soit nombre tres_grand = 35;
+afficher fib_cache(tres_grand);
