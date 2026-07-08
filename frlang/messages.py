@@ -773,6 +773,33 @@ def array_too_many_elements(got: int, size: int, line: int, column: int) -> Pars
     )
 
 
+def missing_closing_brace(line: int, column: int) -> ParseError:
+    return ParseError(
+        "Il manque une accolade fermante « } ».",
+        line=line,
+        column=column,
+        hint="Exemple : soit Rangee notes = {10, 20};",
+    )
+
+
+def expected_carnet_key(line: int, column: int) -> ParseError:
+    return ParseError(
+        "Dans un Carnet, chaque entrée commence par une étiquette.",
+        line=line,
+        column=column,
+        hint='Exemple : soit Carnet eleve = {"nom": "Léa", "score": 10};',
+    )
+
+
+def carnet_literal_requires_colon(key: str, line: int, column: int) -> ParseError:
+    return ParseError(
+        f"Après « {key} », il faut « : » puis une valeur.",
+        line=line,
+        column=column,
+        hint='Exemple : {"nom": "Léa"} ou {nom: "Léa"}',
+    )
+
+
 def pointer_type_mismatch(
     name: str,
     expected_target: str,

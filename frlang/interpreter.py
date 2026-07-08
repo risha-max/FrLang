@@ -72,6 +72,9 @@ from frlang.messages import (
     array_size_must_be_constant,
     array_size_invalid,
     array_too_many_elements,
+    missing_closing_brace,
+    expected_carnet_key,
+    carnet_literal_requires_colon,
     return_in_void_function,
     return_outside_function,
     rien_not_allowed_for_type,
@@ -1477,6 +1480,8 @@ class Interpreter:
             return True
         if self._check(TokenKind.VRAI) or self._check(TokenKind.FAUX):
             return True
+        if self._check(TokenKind.LBRACE):
+            return True
         if self._check(TokenKind.TYPE) and is_object_type(str(self._peek().value)):
             return True
         if self._check(TokenKind.IDENTIFIER):
@@ -1618,6 +1623,14 @@ class Interpreter:
             return self._mots_expression(name, line, column)
         if var_type == VarType.LOGIQUE:
             return self._logique_expression(name, line, column)
+        if var_type == VarType.RANGEE:
+            if self._check(TokenKind.LBRACE):
+                return self._parse_rangee_literal(line, column)
+            return self._value_expression()
+        if var_type == VarType.CARNET:
+            if self._check(TokenKind.LBRACE):
+                return self._parse_carnet_literal(line, column)
+            return self._value_expression()
         return self._value_expression()
 
     def _current_scope(self) -> dict[str, Variable]:
@@ -1752,6 +1765,43 @@ class Interpreter:
         while len(padded) < array_type.size:
             padded.append(NOTHING)
         return padded
+
+    def _parse_rangee_literal(self, line: int, column: int) -> Rangee:
+        self._consume(TokenKind.LBRACE, missing_closing_brace)
+        items: list[Value] = []
+        if not self._check(TokenKind.RBRACE):
+            while True:
+                items.append(self._value_expression())
+                if not self._match(TokenKind.COMMA):
+                    break
+        if not self._match(TokenKind.RBRACE):
+            peek = self._peek()
+            raise missing_closing_brace(peek.line, peek.column)
+        return fill_list_object(Rangee(), items, line, column)  # type: ignore[return-value]
+
+    def _parse_carnet_literal_key(self) -> str:
+        token = self._peek()
+        if self._check(TokenKind.TEXT):
+            return str(self._advance().value)
+        if self._check(TokenKind.IDENTIFIER):
+            return str(self._advance().value)
+        raise expected_carnet_key(token.line, token.column)
+
+    def _parse_carnet_literal(self, line: int, column: int) -> Carnet:
+        self._consume(TokenKind.LBRACE, missing_closing_brace)
+        entries: dict[str, Value] = {}
+        if not self._check(TokenKind.RBRACE):
+            while True:
+                key = self._parse_carnet_literal_key()
+                if not self._match(TokenKind.COLON):
+                    raise carnet_literal_requires_colon(key, self._peek().line, self._peek().column)
+                entries[key] = self._value_expression()
+                if not self._match(TokenKind.COMMA):
+                    break
+        if not self._match(TokenKind.RBRACE):
+            peek = self._peek()
+            raise missing_closing_brace(peek.line, peek.column)
+        return fill_carnet_object(Carnet(), entries, line, column)  # type: ignore[return-value]
 
     def _parse_array_literal(self, array_type: ArrayType, name: str, line: int, column: int) -> list[Value]:
         self._consume(TokenKind.LBRACKET, missing_closing_bracket)
@@ -2031,6 +2081,10 @@ class Interpreter:
         if is_object_var_type(var_type):
             if var_type == VarType.MOTS and self._check(TokenKind.TEXT):
                 return Mots(str(self._advance().value))
+            if var_type == VarType.RANGEE and self._check(TokenKind.LBRACE):
+                return self._parse_rangee_literal(line, column)
+            if var_type == VarType.CARNET and self._check(TokenKind.LBRACE):
+                return self._parse_carnet_literal(line, column)
             if self._check(TokenKind.NOUVEAU):
                 value = self._parse_nouveau()
                 if not isinstance(value, FrLangObject) or value.type_name != var_type.value:

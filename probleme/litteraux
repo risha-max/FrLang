@@ -1,0 +1,13 @@
+soit Mots salut = "bonjour";
+afficher salut;
+
+soit Rangee notes = {10, 20, 30};
+afficher notes;
+
+soit Carnet eleve = {"nom": "Léa", "score": 10};
+afficher eleve.element("nom");
+afficher eleve.element("score");
+
+soit Carnet config = {actif: vrai, seuil: 42};
+afficher config.element("actif");
+afficher config.element("seuil");
