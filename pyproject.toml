@@ -7,10 +7,12 @@ requires-python = ">=3.11"
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0"]
+lsp = ["pygls>=1.3", "lsprotocol", "websockets>=12.0"]
 
 [project.scripts]
 frlang = "frlang.cli:frlang_main"
 ifrlang = "frlang.cli:ifrlang_main"
+frlang-lsp = "frlang.lsp.server:main"
 
 [build-system]
 requires = ["setuptools>=61"]

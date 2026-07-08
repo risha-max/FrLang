@@ -25,6 +25,12 @@ source .venv/bin/activate
 pip install -e ".[dev]"
 ```
 
+Pour l'autocomplétion et les diagnostics (serveur LSP) :
+
+```bash
+pip install -e ".[lsp]"
+```
+
 ## Utilisation
 
 ```bash
@@ -116,6 +122,24 @@ afficher attente.taille();
 ```
 
 Toutes les classes créées héritent de `Original`, qui fournit `afficher()` et `equals(...)`.
+
+## Serveur LSP
+
+FrLang expose un serveur [Language Server Protocol](https://microsoft.github.io/language-server-protocol/) réutilisable partout :
+
+```bash
+frlang-lsp                              # stdio : VS Code, Cursor (futur)
+frlang-lsp --ws --host 127.0.0.1 --port 8765   # WebSocket : site web
+frlang-lsp --tcp --port 8765            # TCP
+```
+
+Le serveur fournit :
+
+- autocomplétion des mots-clés, sortes, builtins, variables, fonctions et classes
+- méthodes après `.` (`mot.inverser`, `notes.ajouter`, ...)
+- diagnostics en direct avec les messages d'erreur FrLang
+
+Code dans `frlang/lsp/`. Pour le site web, connecter **Monaco Editor** au serveur via WebSocket (`monaco-languageclient`). Voir issue #3.
 
 ## Vérification
 
