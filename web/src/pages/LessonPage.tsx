@@ -293,6 +293,7 @@ export default function LessonPage() {
               automaticLayout: true,
               scrollBeyondLastLine: false,
               wordWrap: "on",
+              ariaLabel: "Éditeur de leçon FrLang",
               hover: { enabled: true, delay: 300 },
               quickSuggestions: {
                 other: true,
