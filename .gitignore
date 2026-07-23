@@ -10,3 +10,6 @@ build/
 dist/
 node_modules/
 web/dist/
+data/eleves.json
+data/progress/*.json
+!data/progress/.gitkeep

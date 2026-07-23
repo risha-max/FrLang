@@ -1,0 +1,25 @@
+{
+  "username": "demo",
+  "lessons": {
+    "bonjour": {
+      "status": "completed",
+      "attempts": 1,
+      "completed_at": "2026-07-23T12:00:00+00:00",
+      "last_ok": true,
+      "updated_at": "2026-07-23T12:00:00+00:00"
+    }
+  },
+  "sessions": [],
+  "events": [
+    { "at": "2026-07-23T12:00:00+00:00", "kind": "lesson_completed", "lesson_id": "bonjour" }
+  ],
+  "stats": {
+    "login_count": 2,
+    "total_seconds": 900,
+    "guided_seconds": 600,
+    "free_seconds": 300,
+    "runs_count": 5,
+    "lessons_completed": 1
+  },
+  "active_session": null
+}

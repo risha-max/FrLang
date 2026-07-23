@@ -1,0 +1,197 @@
+{
+  "title": "Parcours FrLang",
+  "description": "Les bases de la programmation en français, pour le primaire et le secondaire.",
+  "modules": [
+    {
+      "id": "decouverte",
+      "title": "Découverte",
+      "summary": "Premiers pas avec l’affichage à l’écran.",
+      "lessons": [
+        {
+          "id": "bonjour",
+          "title": "Bonjour, monde",
+          "summary": "Afficher un message à l’écran.",
+          "objectives": [
+            "Utiliser la commande `afficher`",
+            "Écrire une chaîne de caractères entre guillemets"
+          ],
+          "explain": "En FrLang, `afficher` est une commande (pas juste un mot ordinaire) : elle envoie du texte dans la sortie. Essaie d’écrire la commande `afficher` pour afficher exactement : Bonjour FrLang!",
+          "starter_code": "// Affiche le message demandé\n",
+          "hint": "`afficher` \"Bonjour FrLang!\";",
+          "checks": [
+            { "type": "runs_ok" },
+            { "type": "stdout_contains", "value": "Bonjour FrLang!" }
+          ]
+        },
+        {
+          "id": "variables",
+          "title": "Variables et types",
+          "summary": "Créer des variables nombre et logique.",
+          "objectives": [
+            "Déclarer une variable avec le mot-clé `soit`",
+            "Distinguer les types `nombre` et `logique`"
+          ],
+          "explain": "Avec le mot-clé `soit` et le type `nombre`, la ligne `soit nombre age = 12;` crée une variable. `vrai` et `faux` sont des valeurs du type `logique`. Utilise deux fois la commande `afficher` pour montrer 12 puis vrai.",
+          "starter_code": "soit nombre age = 12;\nsoit logique ok = vrai;\n",
+          "hint": "`afficher` age;\n`afficher` ok;",
+          "checks": [
+            { "type": "runs_ok" },
+            { "type": "stdout_contains", "value": "12" },
+            { "type": "stdout_contains", "value": "vrai" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "calculs",
+      "title": "Calculs",
+      "summary": "Expressions arithmétiques et résultats.",
+      "lessons": [
+        {
+          "id": "arithmetique",
+          "title": "Arithmétique",
+          "summary": "Addition, multiplication et priorité.",
+          "objectives": [
+            "Utiliser +, -, *, /",
+            "Comprendre la priorité des opérations"
+          ],
+          "explain": "Calcule (2 + 3) * 4, puis utilise la commande `afficher` pour montrer le résultat (20).",
+          "starter_code": "// Calcule et affiche 20\n",
+          "hint": "`afficher` (2 + 3) * 4;",
+          "checks": [
+            { "type": "runs_ok" },
+            { "type": "stdout_contains", "value": "20" }
+          ]
+        },
+        {
+          "id": "mots",
+          "title": "Texte (Mots)",
+          "summary": "Manipuler des chaînes de caractères.",
+          "objectives": [
+            "Créer une variable de type `Mots`",
+            "Utiliser la commande `afficher` sur du texte"
+          ],
+          "explain": "Crée `soit` `Mots` prenom = \"Alex\"; puis utilise `afficher` prenom; pour envoyer le texte à la sortie.",
+          "starter_code": "soit Mots prenom = \"Alex\";\n",
+          "hint": "`afficher` prenom;",
+          "checks": [
+            { "type": "runs_ok" },
+            { "type": "stdout_contains", "value": "Alex" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "decisions",
+      "title": "Décisions",
+      "summary": "Branches conditionnelles.",
+      "lessons": [
+        {
+          "id": "conditions",
+          "title": "Si / sinon",
+          "summary": "Choisir quoi faire selon une condition.",
+          "objectives": [
+            "Écrire un bloc avec le mot-clé `si`",
+            "Utiliser le mot-clé `sinon`"
+          ],
+          "explain": "Avec `si` note >= 60, utilise `afficher` \"Reussi\"; sinon, avec `sinon`, utilise `afficher` \"Echec\";. La variable note vaut déjà 75.",
+          "starter_code": "soit nombre note = 75;\n",
+          "hint": "`si` note >= 60 { `afficher` \"Reussi\"; } `sinon` { `afficher` \"Echec\"; }",
+          "checks": [
+            { "type": "runs_ok" },
+            { "type": "stdout_contains", "value": "Reussi" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "repetitions",
+      "title": "Répétitions",
+      "summary": "Boucles pour répéter des actions.",
+      "lessons": [
+        {
+          "id": "tantque",
+          "title": "Boucle tantque",
+          "summary": "Répéter tant qu’une condition est vraie.",
+          "objectives": [
+            "Écrire une boucle avec le mot-clé `tantque`",
+            "Éviter une boucle infinie"
+          ],
+          "explain": "Compte de 1 à 3 inclus. À chaque tour de `tantque`, utilise la commande `afficher` pour montrer le nombre (1, puis 2, puis 3).",
+          "starter_code": "soit nombre n = 1;\n",
+          "hint": "`tantque` n <= 3 { `afficher` n; n = n + 1; }",
+          "checks": [
+            { "type": "runs_ok" },
+            { "type": "stdout_contains", "value": "1" },
+            { "type": "stdout_contains", "value": "2" },
+            { "type": "stdout_contains", "value": "3" }
+          ]
+        },
+        {
+          "id": "pourchaque",
+          "title": "Boucle pourchaque",
+          "summary": "Parcourir une collection d’éléments.",
+          "objectives": [
+            "Créer une collection `Rangee`",
+            "Parcourir avec le mot-clé `pourchaque`"
+          ],
+          "explain": "Crée une `Rangee` avec `nouveau` `Rangee`(10, 20), puis parcours-la avec `pourchaque` … `dans` … et utilise `afficher` pour chaque élément.",
+          "starter_code": "soit Rangee nombres = nouveau Rangee(10, 20);\n",
+          "hint": "`pourchaque` x `dans` nombres { `afficher` x; }",
+          "checks": [
+            { "type": "runs_ok" },
+            { "type": "stdout_contains", "value": "10" },
+            { "type": "stdout_contains", "value": "20" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fonctions",
+      "title": "Fonctions",
+      "summary": "Découper le code en sous-programmes.",
+      "lessons": [
+        {
+          "id": "definir-fonction",
+          "title": "Définir une fonction",
+          "summary": "Créer et appeler une fonction qui retourne un nombre.",
+          "objectives": [
+            "Écrire `definir` `fonction`",
+            "Utiliser le mot-clé `retourne`"
+          ],
+          "explain": "Avec `definir` `fonction`, crée double(n) qui `retourne` n * 2, puis utilise `afficher` double(5); (donc 10).",
+          "starter_code": "// Définis double puis affiche double(5)\n",
+          "hint": "`definir` `fonction` double(`nombre` n) { `retourne` n * 2; } `retourne` `nombre`\n`afficher` double(5);",
+          "checks": [
+            { "type": "runs_ok" },
+            { "type": "stdout_contains", "value": "10" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pratique",
+      "title": "Mise en pratique",
+      "summary": "Petit défi pour consolider.",
+      "lessons": [
+        {
+          "id": "fizz-mini",
+          "title": "Défi : compter jusqu’à 5",
+          "summary": "Combiner boucle et affichage.",
+          "objectives": [
+            "Combiner `tantque` et la commande `afficher`",
+            "Valider un petit programme complet"
+          ],
+          "explain": "Avec `tantque`, compte de 1 à 5. À chaque tour, utilise la commande `afficher` pour écrire le nombre sur sa propre ligne.",
+          "starter_code": "soit nombre i = 1;\n",
+          "hint": "`tantque` i <= 5 { `afficher` i; i = i + 1; }",
+          "checks": [
+            { "type": "runs_ok" },
+            { "type": "stdout_contains", "value": "1" },
+            { "type": "stdout_contains", "value": "5" }
+          ]
+        }
+      ]
+    }
+  ]
+}

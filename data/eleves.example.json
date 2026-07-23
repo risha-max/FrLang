@@ -1,0 +1,34 @@
+{
+  "eleves": [
+    {
+      "username": "admin",
+      "password": "admin",
+      "display_name": "Tuteur",
+      "role": "admin"
+    },
+    {
+      "username": "nouveau",
+      "password": "nouveau",
+      "display_name": "Sam Débutant",
+      "role": "eleve"
+    },
+    {
+      "username": "encours",
+      "password": "encours",
+      "display_name": "Camille En cours",
+      "role": "eleve"
+    },
+    {
+      "username": "avance",
+      "password": "avance",
+      "display_name": "Alex Avancé",
+      "role": "eleve"
+    },
+    {
+      "username": "demo",
+      "password": "demo",
+      "display_name": "Compte Démo",
+      "role": "eleve"
+    }
+  ]
+}

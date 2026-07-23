@@ -1,0 +1,143 @@
+.shell {
+  --qc-blue: #003da5;
+  --qc-blue-deep: #002b75;
+  --qc-blue-soft: #e8eef9;
+  --qc-white: #ffffff;
+  --ink: #0c1a33;
+  --muted: #4a5a73;
+  --line: #c5d0e4;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background:
+    linear-gradient(180deg, #f7f9fd 0%, var(--qc-blue-soft) 100%);
+  color: var(--ink);
+  font-family: "Lexend", "Segoe UI", sans-serif;
+}
+
+.shell-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding: 0.85rem 1.25rem;
+  background: var(--qc-white);
+  border-bottom: 3px solid var(--qc-blue);
+}
+
+.shell-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  min-width: 9rem;
+}
+
+.shell-mark {
+  width: 2.1rem;
+  height: 2.1rem;
+  border-radius: 0.45rem;
+  background:
+    linear-gradient(135deg, var(--qc-blue) 50%, var(--qc-white) 50%),
+    var(--qc-blue);
+  border: 2px solid var(--qc-blue);
+  box-shadow: inset 0 0 0 2px var(--qc-white);
+}
+
+.shell-title {
+  margin: 0;
+  font-family: "Fraunces", Georgia, serif;
+  font-weight: 650;
+  font-size: 1.2rem;
+  color: var(--qc-blue-deep);
+  line-height: 1.1;
+}
+
+.shell-subtitle {
+  margin: 0.1rem 0 0;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.shell-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  flex: 1;
+}
+
+.shell-link {
+  text-decoration: none;
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 0.92rem;
+  padding: 0.45rem 0.75rem;
+  border-radius: 999px;
+}
+
+.shell-link:hover {
+  color: var(--qc-blue-deep);
+  background: var(--qc-blue-soft);
+}
+
+.shell-link-active {
+  color: var(--qc-white);
+  background: var(--qc-blue);
+}
+
+.shell-link-active:hover {
+  color: var(--qc-white);
+  background: var(--qc-blue-deep);
+}
+
+.shell-user {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  margin-left: auto;
+}
+
+.shell-user-name {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--qc-blue-deep);
+}
+
+.shell-logout {
+  border: 1px solid var(--line);
+  background: var(--qc-white);
+  color: var(--ink);
+  border-radius: 0.45rem;
+  padding: 0.4rem 0.7rem;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.shell-logout:hover {
+  border-color: var(--qc-blue);
+  color: var(--qc-blue);
+}
+
+.shell-main {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.shell:has(.kata) .shell-main {
+  /* plein écran pour le workspace devoir */
+}
+
+@media (max-width: 720px) {
+  .shell-header {
+    align-items: flex-start;
+  }
+
+  .shell-user {
+    width: 100%;
+    margin-left: 0;
+    justify-content: space-between;
+  }
+}

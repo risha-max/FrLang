@@ -1,0 +1,15 @@
+{
+  "username": "nouveau",
+  "lessons": {},
+  "sessions": [],
+  "events": [],
+  "stats": {
+    "login_count": 0,
+    "total_seconds": 0,
+    "guided_seconds": 0,
+    "free_seconds": 0,
+    "runs_count": 0,
+    "lessons_completed": 0
+  },
+  "active_session": null
+}

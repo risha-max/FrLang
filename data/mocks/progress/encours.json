@@ -1,0 +1,76 @@
+{
+  "username": "encours",
+  "lessons": {
+    "bonjour": {
+      "status": "completed",
+      "attempts": 2,
+      "completed_at": "2026-07-20T14:10:00+00:00",
+      "last_source": "afficher \"Bonjour FrLang!\";",
+      "last_messages": ["Bravo — objectifs atteints."],
+      "last_ok": true,
+      "updated_at": "2026-07-20T14:10:00+00:00"
+    },
+    "variables": {
+      "status": "completed",
+      "attempts": 3,
+      "completed_at": "2026-07-21T15:02:00+00:00",
+      "last_source": "soit nombre age = 12;\nsoit logique ok = vrai;\nafficher age;\nafficher ok;",
+      "last_messages": ["Bravo — objectifs atteints."],
+      "last_ok": true,
+      "updated_at": "2026-07-21T15:02:00+00:00"
+    },
+    "arithmetique": {
+      "status": "completed",
+      "attempts": 1,
+      "completed_at": "2026-07-22T16:20:00+00:00",
+      "last_source": "afficher (2 + 3) * 4;",
+      "last_messages": ["Bravo — objectifs atteints."],
+      "last_ok": true,
+      "updated_at": "2026-07-22T16:20:00+00:00"
+    },
+    "mots": {
+      "status": "in_progress",
+      "attempts": 2,
+      "completed_at": null,
+      "last_source": "soit Mots prenom = \"Alex\";\n",
+      "last_messages": ["La sortie doit contenir « Alex »."],
+      "last_ok": false,
+      "updated_at": "2026-07-23T13:40:00+00:00"
+    }
+  },
+  "sessions": [
+    {
+      "id": "mock-session-1",
+      "started_at": "2026-07-22T15:00:00+00:00",
+      "last_heartbeat": "2026-07-22T15:45:00+00:00",
+      "ended_at": "2026-07-22T15:45:00+00:00",
+      "path": "/lecons/arithmetique",
+      "seconds": 2700
+    },
+    {
+      "id": "mock-session-2",
+      "started_at": "2026-07-23T13:00:00+00:00",
+      "last_heartbeat": "2026-07-23T13:40:00+00:00",
+      "ended_at": "2026-07-23T13:40:00+00:00",
+      "path": "/atelier",
+      "seconds": 2400
+    }
+  ],
+  "events": [
+    { "at": "2026-07-20T14:00:00+00:00", "kind": "login", "path": "/accueil" },
+    { "at": "2026-07-20T14:10:00+00:00", "kind": "lesson_completed", "lesson_id": "bonjour" },
+    { "at": "2026-07-21T15:02:00+00:00", "kind": "lesson_completed", "lesson_id": "variables" },
+    { "at": "2026-07-22T16:20:00+00:00", "kind": "lesson_completed", "lesson_id": "arithmetique" },
+    { "at": "2026-07-23T13:35:00+00:00", "kind": "lesson_attempt", "lesson_id": "mots", "ok": false },
+    { "at": "2026-07-23T13:38:00+00:00", "kind": "run", "ok": true, "context": "free" }
+  ],
+  "stats": {
+    "login_count": 6,
+    "total_seconds": 10800,
+    "guided_seconds": 7200,
+    "free_seconds": 3600,
+    "runs_count": 28,
+    "lessons_completed": 3
+  },
+  "active_session": null
+}

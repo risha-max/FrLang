@@ -1,50 +1,53 @@
 import { expect, test } from "@playwright/test";
 
 const APP_URL = process.env.FRLANG_WEB_URL ?? "http://127.0.0.1:5173";
+const LESSON_URL = `${APP_URL.replace(/\/$/, "")}/lecons/bonjour`;
 
-test.describe("Atelier FrLang", () => {
+async function seedAuth(page: import("@playwright/test").Page) {
+  await page.addInitScript(() => {
+    localStorage.setItem(
+      "frlang-auth",
+      JSON.stringify({
+        state: {
+          user: {
+            username: "nouveau",
+            displayName: "Sam Débutant",
+            sessionId: "e2e-session",
+            role: "eleve",
+          },
+        },
+        version: 0,
+      }),
+    );
+  });
+}
+
+test.describe("Leçon FrLang", () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto(APP_URL);
+    await seedAuth(page);
+    await page.goto(LESSON_URL);
     await expect(page.locator(".status")).toHaveText("LSP : ready", {
       timeout: 15_000,
     });
   });
 
-  test("affiche Hello World après exécution", async ({ page }) => {
-    const hello = 'afficher "Bonjour le monde!";';
-    await page.evaluate(async (source) => {
-      await fetch("/api/main", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ source }),
-      });
-    }, hello);
-    await page.reload();
-    await expect(page.locator(".status")).toHaveText("LSP : ready", {
-      timeout: 15_000,
-    });
-
-    await page.getByRole("button", { name: "Exécuter" }).click();
-    await expect(page.locator(".output")).toContainText("Bonjour le monde!", {
+  test("valide la leçon Bonjour après exécution", async ({ page }) => {
+    const editor = page.locator(".monaco-editor");
+    await editor.click();
+    await page.keyboard.press("Control+A");
+    await page.keyboard.type('afficher "Bonjour FrLang!";');
+    await page.getByRole("button", { name: "Exécuter et vérifier" }).click();
+    await expect(page.locator(".lesson-output")).toContainText("Bonjour FrLang!", {
       timeout: 10_000,
     });
-    await expect(page.locator(".output.error")).toHaveCount(0);
+    await expect(page.getByText("Objectifs atteints")).toBeVisible();
   });
 
   test("affiche une erreur de syntaxe via LSP", async ({ page }) => {
-    const invalid = "soit nombre x = ;\nafficher x;";
-    await page.evaluate(async (source) => {
-      await fetch("/api/main", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ source }),
-      });
-    }, invalid);
-    await page.reload();
-    await expect(page.locator(".status")).toHaveText("LSP : ready", {
-      timeout: 15_000,
-    });
-
+    const editor = page.locator(".monaco-editor");
+    await editor.click();
+    await page.keyboard.press("Control+A");
+    await page.keyboard.type("soit nombre x = ;\nafficher x;");
     await expect(page.locator(".squiggly-error")).toHaveCount(1, {
       timeout: 10_000,
     });
@@ -81,7 +84,13 @@ test.describe("Atelier FrLang", () => {
           };
 
           if (message.id === 1) {
-            ws.send(JSON.stringify({ jsonrpc: "2.0", method: "initialized", params: {} }));
+            ws.send(
+              JSON.stringify({
+                jsonrpc: "2.0",
+                method: "initialized",
+                params: {},
+              }),
+            );
             ws.send(
               JSON.stringify({
                 jsonrpc: "2.0",
@@ -154,7 +163,13 @@ test.describe("Atelier FrLang", () => {
           };
 
           if (message.id === 1) {
-            ws.send(JSON.stringify({ jsonrpc: "2.0", method: "initialized", params: {} }));
+            ws.send(
+              JSON.stringify({
+                jsonrpc: "2.0",
+                method: "initialized",
+                params: {},
+              }),
+            );
             ws.send(
               JSON.stringify({
                 jsonrpc: "2.0",
@@ -196,20 +211,10 @@ test.describe("Atelier FrLang", () => {
   });
 
   test("propose l'autocomplétion des mots-clés", async ({ page }) => {
-    await page.evaluate(async () => {
-      await fetch("/api/main", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ source: "" }),
-      });
-    });
-    await page.reload();
-    await expect(page.locator(".status")).toHaveText("LSP : ready", {
-      timeout: 15_000,
-    });
-
     const editor = page.locator(".monaco-editor");
     await editor.click();
+    await page.keyboard.press("Control+A");
+    await page.keyboard.press("Backspace");
     await page.keyboard.type("aff");
     await page.keyboard.press("Control+Space");
 
@@ -217,5 +222,29 @@ test.describe("Atelier FrLang", () => {
       timeout: 5_000,
     });
     await expect(page.locator(".monaco-list-row")).toContainText(["afficher"]);
+  });
+});
+
+test.describe("Connexion FrLang", () => {
+  test("affiche la page de connexion style académie", async ({ page }) => {
+    await page.goto(`${APP_URL.replace(/\/$/, "")}/login`);
+    await expect(page.getByRole("heading", { name: "FrLang" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Connexion" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Se connecter" })).toBeVisible();
+  });
+
+  test("connecte un élève vers le parcours guidé", async ({ page }) => {
+    await page.goto(`${APP_URL.replace(/\/$/, "")}/login`);
+    await page.getByLabel("Nom d’utilisateur").fill("demo");
+    await page.getByLabel("Mot de passe").fill("demo");
+    await page.getByRole("button", { name: "Se connecter" }).click();
+    await expect(page).toHaveURL(/\/lecons$/);
+    await expect(page.getByRole("heading", { name: /parcours guidé/i })).toBeVisible();
+  });
+
+  test("redirige /atelier vers le parcours", async ({ page }) => {
+    await seedAuth(page);
+    await page.goto(`${APP_URL.replace(/\/$/, "")}/atelier`);
+    await expect(page).toHaveURL(/\/lecons$/);
   });
 });

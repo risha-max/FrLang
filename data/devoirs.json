@@ -1,0 +1,52 @@
+{
+  "devoirs": [
+    {
+      "id": "corriger-multiply",
+      "title": "Corriger multiply",
+      "difficulty": "facile",
+      "points": 100,
+      "tags": ["DEBUG", "FONCTIONS"],
+      "summary": "Cette fonction ne s’exécute pas correctement. Trouve pourquoi.",
+      "instructions": "La fonction `multiply` devrait retourner le produit de deux nombres, mais le code est cassé.\n\nCorrige la définition, puis utilise `afficher` pour montrer `multiply(3, 5)` (attendu : 15).",
+      "starter_code": "definir fonction multiply(nombre x nombre y) {\n    retourne x * y;\n} retourne nombre\n\nafficher multiply(3, 5);\n",
+      "sample_tests": "// Exemples attendus (à valider avec ta solution)\n// multiply(1, 1)  → 1\n// multiply(2, 1)  → 2\n// multiply(2, 2)  → 4\n// multiply(3, 5)  → 15\n",
+      "checks": [
+        { "type": "runs_ok" },
+        { "type": "stdout_contains", "value": "15" }
+      ],
+      "assignees": ["nouveau", "encours", "avance", "demo"]
+    },
+    {
+      "id": "somme-rangee",
+      "title": "Somme d’une Rangee",
+      "difficulty": "moyen",
+      "points": 200,
+      "tags": ["COLLECTIONS", "BOUCLES"],
+      "summary": "Calcule la somme des éléments d’une Rangee.",
+      "instructions": "On te donne une `Rangee` de nombres. Parcours-la avec `pourchaque` … `dans` … et calcule la somme.\n\nAffiche la somme de `nouveau Rangee(10, 20, 30)` (attendu : 60).",
+      "starter_code": "soit Rangee nombres = nouveau Rangee(10, 20, 30);\nsoit nombre somme = 0;\n\n// Calcule la somme puis affiche-la\n",
+      "sample_tests": "// Exemples\n// Rangee(1, 2, 3)     → 6\n// Rangee(10, 20, 30)  → 60\n",
+      "checks": [
+        { "type": "runs_ok" },
+        { "type": "stdout_contains", "value": "60" }
+      ],
+      "assignees": ["encours", "avance", "demo"]
+    },
+    {
+      "id": "pair-ou-impair",
+      "title": "Pair ou impair",
+      "difficulty": "facile",
+      "points": 80,
+      "tags": ["CONDITIONS", "BASES"],
+      "summary": "Dis si un nombre est pair ou impair.",
+      "instructions": "Pour `n = 7`, utilise `si` / `sinon` et `afficher`.\n\nSi n est pair, affiche `pair`. Sinon, affiche `impair`.",
+      "starter_code": "soit nombre n = 7;\n",
+      "sample_tests": "// n = 2 → pair\n// n = 7 → impair\n",
+      "checks": [
+        { "type": "runs_ok" },
+        { "type": "stdout_contains", "value": "impair" }
+      ],
+      "assignees": ["nouveau", "encours", "avance", "demo"]
+    }
+  ]
+}

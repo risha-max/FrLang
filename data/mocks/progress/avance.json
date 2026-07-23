@@ -1,0 +1,104 @@
+{
+  "username": "avance",
+  "lessons": {
+    "bonjour": {
+      "status": "completed",
+      "attempts": 1,
+      "completed_at": "2026-07-10T12:00:00+00:00",
+      "last_ok": true,
+      "updated_at": "2026-07-10T12:00:00+00:00"
+    },
+    "variables": {
+      "status": "completed",
+      "attempts": 1,
+      "completed_at": "2026-07-10T12:20:00+00:00",
+      "last_ok": true,
+      "updated_at": "2026-07-10T12:20:00+00:00"
+    },
+    "arithmetique": {
+      "status": "completed",
+      "attempts": 2,
+      "completed_at": "2026-07-11T13:00:00+00:00",
+      "last_ok": true,
+      "updated_at": "2026-07-11T13:00:00+00:00"
+    },
+    "mots": {
+      "status": "completed",
+      "attempts": 1,
+      "completed_at": "2026-07-11T13:30:00+00:00",
+      "last_ok": true,
+      "updated_at": "2026-07-11T13:30:00+00:00"
+    },
+    "conditions": {
+      "status": "completed",
+      "attempts": 2,
+      "completed_at": "2026-07-12T14:00:00+00:00",
+      "last_ok": true,
+      "updated_at": "2026-07-12T14:00:00+00:00"
+    },
+    "tantque": {
+      "status": "completed",
+      "attempts": 3,
+      "completed_at": "2026-07-13T15:00:00+00:00",
+      "last_ok": true,
+      "updated_at": "2026-07-13T15:00:00+00:00"
+    },
+    "pourchaque": {
+      "status": "completed",
+      "attempts": 2,
+      "completed_at": "2026-07-14T16:00:00+00:00",
+      "last_ok": true,
+      "updated_at": "2026-07-14T16:00:00+00:00"
+    },
+    "definir-fonction": {
+      "status": "completed",
+      "attempts": 4,
+      "completed_at": "2026-07-15T17:00:00+00:00",
+      "last_ok": true,
+      "updated_at": "2026-07-15T17:00:00+00:00"
+    },
+    "fizz-mini": {
+      "status": "in_progress",
+      "attempts": 1,
+      "completed_at": null,
+      "last_source": "soit nombre i = 1;\n",
+      "last_messages": ["La sortie doit contenir « 5 »."],
+      "last_ok": false,
+      "updated_at": "2026-07-22T18:10:00+00:00"
+    }
+  },
+  "sessions": [
+    {
+      "id": "mock-adv-1",
+      "started_at": "2026-07-15T16:00:00+00:00",
+      "last_heartbeat": "2026-07-15T17:30:00+00:00",
+      "ended_at": "2026-07-15T17:30:00+00:00",
+      "path": "/lecons/definir-fonction",
+      "seconds": 5400
+    },
+    {
+      "id": "mock-adv-2",
+      "started_at": "2026-07-22T17:00:00+00:00",
+      "last_heartbeat": "2026-07-22T18:20:00+00:00",
+      "ended_at": "2026-07-22T18:20:00+00:00",
+      "path": "/atelier",
+      "seconds": 4800
+    }
+  ],
+  "events": [
+    { "at": "2026-07-15T17:00:00+00:00", "kind": "lesson_completed", "lesson_id": "definir-fonction" },
+    { "at": "2026-07-22T17:05:00+00:00", "kind": "login", "path": "/accueil" },
+    { "at": "2026-07-22T17:40:00+00:00", "kind": "run", "ok": true, "context": "free" },
+    { "at": "2026-07-22T18:10:00+00:00", "kind": "lesson_attempt", "lesson_id": "fizz-mini", "ok": false },
+    { "at": "2026-07-22T18:20:00+00:00", "kind": "logout" }
+  ],
+  "stats": {
+    "login_count": 14,
+    "total_seconds": 43200,
+    "guided_seconds": 30000,
+    "free_seconds": 13200,
+    "runs_count": 96,
+    "lessons_completed": 8
+  },
+  "active_session": null
+}
